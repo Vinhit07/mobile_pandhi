@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
 import Typography from '../constants/Typography';
 import MenuItem from './MenuItem';
 import { MenuItem as MenuItemType } from '../data/menuData';
+import { useTheme } from '../context';
 
-// Enable LayoutAnimation on Android
+// Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -27,25 +27,27 @@ const MenuCategory: React.FC<MenuCategoryProps> = ({
     onAddItem,
 }) => {
     const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
 
-    const toggleExpand = () => {
+    const toggleExpanded = () => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setIsExpanded(!isExpanded);
     };
 
     return (
         <View style={styles.container}>
-            <TouchableOpacity style={styles.header} onPress={toggleExpand}>
-                <View style={styles.titleContainer}>
+            <TouchableOpacity style={styles.header} onPress={toggleExpanded}>
+                <View style={styles.leftSection}>
                     <View style={styles.iconContainer}>
                         <Text style={styles.icon}>{icon}</Text>
                     </View>
-                    <Text style={styles.title}>{name}</Text>
+                    <Text style={styles.categoryName}>{name}</Text>
                 </View>
                 <Ionicons
                     name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                    size={24}
-                    color={Colors.textSecondary}
+                    size={20}
+                    color={theme.textSecondary}
                 />
             </TouchableOpacity>
 
@@ -67,43 +69,43 @@ const MenuCategory: React.FC<MenuCategoryProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
-        backgroundColor: Colors.categoryBackground,
+        backgroundColor: theme.cardBackground,
         borderRadius: 16,
         marginBottom: 12,
         overflow: 'hidden',
     },
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        justifyContent: 'space-between',
         padding: 16,
     },
-    titleContainer: {
+    leftSection: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
     },
     iconContainer: {
         width: 36,
         height: 36,
         borderRadius: 10,
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.categoryBackground,
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 12,
     },
     icon: {
         fontSize: 18,
     },
-    title: {
+    categoryName: {
         fontSize: Typography.sizes.lg,
         fontWeight: Typography.weights.semibold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
     },
     itemsContainer: {
         borderTopWidth: 1,
-        borderTopColor: Colors.border,
+        borderTopColor: theme.divider,
     },
 });
 

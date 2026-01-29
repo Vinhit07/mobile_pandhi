@@ -1,8 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
 import Typography from '../constants/Typography';
+import { useTheme } from '../context';
 
 interface HeaderProps {
     userName: string;
@@ -10,29 +10,28 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ userName, greeting }) => {
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
+
     return (
         <View style={styles.container}>
             <View style={styles.leftSection}>
-                <Image
-                    source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=50&h=50&fit=crop' }}
-                    style={styles.avatar}
-                />
-                <View style={styles.greetingContainer}>
-                    <Text style={styles.greetingText}>{greeting}</Text>
-                    <View style={styles.nameRow}>
-                        <Text style={styles.userName}>{userName}!</Text>
-                        <Text style={styles.emoji}>👋</Text>
-                    </View>
+                <View style={styles.avatar}>
+                    <Text style={styles.avatarEmoji}>👋</Text>
+                </View>
+                <View>
+                    <Text style={styles.greeting}>{greeting}</Text>
+                    <Text style={styles.userName}>{userName}! 👋</Text>
                 </View>
             </View>
             <TouchableOpacity style={styles.settingsButton}>
-                <Ionicons name="settings-outline" size={24} color={Colors.primary} />
+                <Ionicons name="options-outline" size={22} color={theme.textPrimary} />
             </TouchableOpacity>
         </View>
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -48,36 +47,30 @@ const styles = StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 22,
-        marginRight: 12,
-        backgroundColor: Colors.cardBackground,
-    },
-    greetingContainer: {
+        backgroundColor: theme.cardBackground,
         justifyContent: 'center',
-    },
-    greetingText: {
-        fontSize: Typography.sizes.xs,
-        color: Colors.textSecondary,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
-    nameRow: {
-        flexDirection: 'row',
         alignItems: 'center',
+        marginRight: 12,
+    },
+    avatarEmoji: {
+        fontSize: 20,
+    },
+    greeting: {
+        fontSize: Typography.sizes.xs,
+        color: theme.textSecondary,
+        letterSpacing: 1,
+        marginBottom: 2,
     },
     userName: {
         fontSize: Typography.sizes.xl,
         fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
-    },
-    emoji: {
-        fontSize: 18,
-        marginLeft: 4,
+        color: theme.textPrimary,
     },
     settingsButton: {
         width: 44,
         height: 44,
         borderRadius: 12,
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         justifyContent: 'center',
         alignItems: 'center',
     },

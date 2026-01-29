@@ -8,11 +8,10 @@ import {
     StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Colors from '../constants/Colors';
 import Typography from '../constants/Typography';
-import { Header, SearchBar, FavoriteCard, MenuCategory } from '../components';
-import { menuCategories, favoriteItems, MenuItem as MenuItemType } from '../data/menuData';
-import { useCart } from '../context';
+import { Header, SearchBar, FavoriteCard, MenuCategory, PopupCard } from '../components';
+import { menuCategories, favoriteItems, popupItems, MenuItem as MenuItemType } from '../data/menuData';
+import { useCart, useTheme } from '../context';
 
 // Helper function to get time-based greeting
 const getGreeting = (): string => {
@@ -25,6 +24,7 @@ const getGreeting = (): string => {
 const HomeScreen: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const { addItem } = useCart();
+    const { theme } = useTheme();
 
     const handleOrderAgain = (item: MenuItemType) => {
         addItem(item);
@@ -34,9 +34,11 @@ const HomeScreen: React.FC = () => {
         addItem(item);
     };
 
+    const styles = createStyles(theme);
+
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+            <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.background} />
             <ScrollView
                 style={styles.scrollView}
                 showsVerticalScrollIndicator={false}
@@ -83,6 +85,27 @@ const HomeScreen: React.FC = () => {
                     />
                 </View>
 
+                {/* Pop ups Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Pop ups</Text>
+                    <FlatList
+                        horizontal
+                        data={popupItems}
+                        keyExtractor={(item) => item.id}
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.popupsContainer}
+                        renderItem={({ item }) => (
+                            <PopupCard
+                                id={item.id}
+                                title={item.title}
+                                subtitle={item.subtitle}
+                                image={item.image}
+                                isLive={item.isLive}
+                            />
+                        )}
+                    />
+                </View>
+
                 {/* Explore Menu Section */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Explore Menu</Text>
@@ -104,10 +127,10 @@ const HomeScreen: React.FC = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: theme.background,
     },
     scrollView: {
         flex: 1,
@@ -128,16 +151,19 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: Typography.sizes.xl,
         fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         paddingHorizontal: 20,
         marginBottom: 16,
     },
     seeAll: {
         fontSize: Typography.sizes.sm,
-        color: Colors.primary,
+        color: theme.primary,
         fontWeight: Typography.weights.medium,
     },
     favoritesContainer: {
+        paddingHorizontal: 20,
+    },
+    popupsContainer: {
         paddingHorizontal: 20,
     },
     categoriesContainer: {

@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
 import Typography from '../constants/Typography';
+import { useTheme } from '../context';
 
 interface SearchBarProps {
     value: string;
@@ -13,56 +13,64 @@ interface SearchBarProps {
 const SearchBar: React.FC<SearchBarProps> = ({
     value,
     onChangeText,
-    placeholder = "What are you craving?"
+    placeholder = 'Search...',
 }) => {
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
+
     return (
         <View style={styles.container}>
-            <View style={styles.searchContainer}>
-                <Ionicons name="search-outline" size={20} color={Colors.textSecondary} />
+            <View style={styles.searchBox}>
+                <Ionicons name="search-outline" size={20} color={theme.textMuted} />
                 <TextInput
                     style={styles.input}
                     value={value}
                     onChangeText={onChangeText}
                     placeholder={placeholder}
-                    placeholderTextColor={Colors.textSecondary}
+                    placeholderTextColor={theme.textMuted}
                 />
             </View>
             <TouchableOpacity style={styles.filterButton}>
-                <Ionicons name="options-outline" size={20} color={Colors.textPrimary} />
+                <Ionicons name="options" size={20} color={theme.textPrimary} />
             </TouchableOpacity>
         </View>
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
         flexDirection: 'row',
+        alignItems: 'center',
         paddingHorizontal: 20,
-        marginBottom: 20,
+        marginBottom: 24,
         gap: 12,
     },
-    searchContainer: {
+    searchBox: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.inputBackground,
         borderRadius: 12,
         paddingHorizontal: 16,
-        height: 48,
-        gap: 10,
+        paddingVertical: 12,
+        borderWidth: 1,
+        borderColor: theme.border,
     },
     input: {
         flex: 1,
+        marginLeft: 10,
         fontSize: Typography.sizes.md,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
     },
     filterButton: {
         width: 48,
         height: 48,
-        backgroundColor: Colors.cardBackground,
         borderRadius: 12,
+        backgroundColor: theme.cardBackground,
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: theme.border,
     },
 });
 

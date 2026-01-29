@@ -23,6 +23,14 @@ export interface FavoriteItem {
     image: string;
 }
 
+export interface PopupItem {
+    id: string;
+    title: string;
+    subtitle: string;
+    image: string;
+    isLive: boolean;
+}
+
 // Sample menu data with Indian Rupee pricing
 export const menuCategories: MenuCategory[] = [
     {
@@ -171,5 +179,36 @@ export const favoriteItems: FavoriteItem[] = [
         lastOrdered: 'Fri',
         price: 220,
         image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=100&h=100&fit=crop',
+    },
+];
+
+export const popupItems: PopupItem[] = [
+    {
+        id: 'dominos',
+        title: "Domino's",
+        subtitle: 'Pizza • Italian • Fast Food',
+        image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&h=200&fit=crop',
+        isLive: true,
+    },
+    {
+        id: 'popup1',
+        title: 'Fresh Subs',
+        subtitle: 'Make it your way',
+        image: 'https://images.unsplash.com/photo-1509722747041-616f39b57569?w=400&h=200&fit=crop',
+        isLive: true,
+    },
+    {
+        id: 'popup2',
+        title: 'Breakfast Special',
+        subtitle: 'Start your day right',
+        image: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=400&h=200&fit=crop',
+        isLive: false,
+    },
+    {
+        id: 'popup3',
+        title: 'Coffee Hour',
+        subtitle: '20% off on all beverages',
+        image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=200&fit=crop',
+        isLive: true,
     },
 ];

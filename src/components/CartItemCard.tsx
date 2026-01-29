@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
 import Typography from '../constants/Typography';
 import { formatCurrency } from '../utils/currency';
+import { useTheme } from '../context';
 
 interface CartItemCardProps {
     name: string;
@@ -24,6 +24,9 @@ const CartItemCard: React.FC<CartItemCardProps> = ({
     onIncrease,
     onDecrease,
 }) => {
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
+
     return (
         <View style={styles.container}>
             <Image source={{ uri: image }} style={styles.image} />
@@ -34,22 +37,22 @@ const CartItemCard: React.FC<CartItemCardProps> = ({
             </View>
             <View style={styles.quantityContainer}>
                 <TouchableOpacity style={styles.quantityButton} onPress={onDecrease}>
-                    <Ionicons name="remove" size={16} color={Colors.textSecondary} />
+                    <Ionicons name="remove" size={16} color={theme.textSecondary} />
                 </TouchableOpacity>
                 <Text style={styles.quantity}>{quantity}</Text>
                 <TouchableOpacity style={styles.quantityButton} onPress={onIncrease}>
-                    <Ionicons name="add" size={16} color={Colors.textSecondary} />
+                    <Ionicons name="add" size={16} color={theme.textSecondary} />
                 </TouchableOpacity>
             </View>
         </View>
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         borderRadius: 16,
         padding: 12,
         marginBottom: 12,
@@ -58,7 +61,7 @@ const styles = StyleSheet.create({
         width: 70,
         height: 70,
         borderRadius: 12,
-        backgroundColor: Colors.categoryBackground,
+        backgroundColor: theme.categoryBackground,
     },
     content: {
         flex: 1,
@@ -67,23 +70,23 @@ const styles = StyleSheet.create({
     name: {
         fontSize: Typography.sizes.lg,
         fontWeight: Typography.weights.semibold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         marginBottom: 2,
     },
     variant: {
         fontSize: Typography.sizes.sm,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
         marginBottom: 4,
     },
     price: {
         fontSize: Typography.sizes.lg,
         fontWeight: Typography.weights.semibold,
-        color: Colors.priceOrange,
+        color: theme.priceOrange,
     },
     quantityContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.categoryBackground,
+        backgroundColor: theme.categoryBackground,
         borderRadius: 8,
         paddingVertical: 6,
         paddingHorizontal: 4,
@@ -97,7 +100,7 @@ const styles = StyleSheet.create({
     quantity: {
         fontSize: Typography.sizes.md,
         fontWeight: Typography.weights.medium,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         minWidth: 24,
         textAlign: 'center',
     },

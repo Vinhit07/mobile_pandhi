@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import Colors from '../constants/Colors';
 import Typography from '../constants/Typography';
 import { formatCurrency } from '../utils/currency';
+import { useTheme } from '../context';
 
 interface FavoriteCardProps {
     name: string;
@@ -19,6 +19,9 @@ const FavoriteCard: React.FC<FavoriteCardProps> = ({
     image,
     onOrderAgain,
 }) => {
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
+
     return (
         <View style={styles.container}>
             <Image source={{ uri: image }} style={styles.image} />
@@ -33,10 +36,10 @@ const FavoriteCard: React.FC<FavoriteCardProps> = ({
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
         width: 160,
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         borderRadius: 16,
         overflow: 'hidden',
         marginRight: 12,
@@ -44,7 +47,7 @@ const styles = StyleSheet.create({
     image: {
         width: '100%',
         height: 100,
-        backgroundColor: Colors.categoryBackground,
+        backgroundColor: theme.categoryBackground,
     },
     content: {
         padding: 12,
@@ -52,16 +55,16 @@ const styles = StyleSheet.create({
     name: {
         fontSize: Typography.sizes.md,
         fontWeight: Typography.weights.semibold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         marginBottom: 4,
     },
     details: {
         fontSize: Typography.sizes.xs,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
         marginBottom: 10,
     },
     orderButton: {
-        backgroundColor: Colors.primary,
+        backgroundColor: theme.primary,
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 20,
@@ -70,7 +73,7 @@ const styles = StyleSheet.create({
     orderButtonText: {
         fontSize: Typography.sizes.xs,
         fontWeight: Typography.weights.semibold,
-        color: Colors.textPrimary,
+        color: '#FFFFFF',
     },
 });
 

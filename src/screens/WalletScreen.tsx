@@ -10,9 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import Colors from '../constants/Colors';
 import Typography from '../constants/Typography';
 import { formatCurrency, CURRENCY_SYMBOL } from '../utils/currency';
+import { useTheme } from '../context';
 
 interface Transaction {
     id: string;
@@ -22,7 +22,6 @@ interface Transaction {
     time: string;
 }
 
-// Sample transaction data
 const sampleTransactions: Transaction[] = [
     { id: 't1', amount: 120.00, type: 'debit', date: 'Today', time: '12:30 PM' },
     { id: 't2', amount: 45.00, type: 'debit', date: 'Today', time: '8:45 AM' },
@@ -33,35 +32,35 @@ const sampleTransactions: Transaction[] = [
 
 const WalletScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { theme } = useTheme();
     const [balance] = useState(1450.50);
     const [monthlyAdded] = useState(500.00);
     const [transactions] = useState<Transaction[]>(sampleTransactions);
 
+    const styles = createStyles(theme);
+
     const handleAddMoney = () => {
-        // TODO: Implement add money flow
         console.log('Add money pressed');
     };
 
     const handleQuickTopUp = (amount: number) => {
-        // TODO: Implement quick top-up
         console.log('Quick top-up:', amount);
     };
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+            <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.background} />
 
-            {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
+                    <Ionicons name="chevron-back" size={24} color={theme.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>My Wallet</Text>
                 <TouchableOpacity style={styles.menuButton}>
-                    <Ionicons name="ellipsis-vertical" size={20} color={Colors.textPrimary} />
+                    <Ionicons name="ellipsis-vertical" size={20} color={theme.textPrimary} />
                 </TouchableOpacity>
             </View>
 
@@ -70,7 +69,6 @@ const WalletScreen: React.FC = () => {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
             >
-                {/* Balance Card */}
                 <View style={styles.balanceCard}>
                     <View style={styles.balanceHeader}>
                         <Text style={styles.balanceLabel}>Total Balance</Text>
@@ -88,10 +86,9 @@ const WalletScreen: React.FC = () => {
                     </View>
                 </View>
 
-                {/* Quick Top-Up Section */}
                 <Text style={styles.sectionTitle}>QUICK TOP-UP</Text>
                 <TouchableOpacity style={styles.addMoneyButton} onPress={handleAddMoney}>
-                    <Ionicons name="add" size={20} color={Colors.background} />
+                    <Ionicons name="add" size={20} color="#FFFFFF" />
                     <Text style={styles.addMoneyText}>Add Money</Text>
                 </TouchableOpacity>
 
@@ -110,7 +107,6 @@ const WalletScreen: React.FC = () => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Recent Transactions */}
                 <Text style={styles.transactionsTitle}>Recent Transactions</Text>
                 <View style={styles.transactionsList}>
                     {transactions.map((transaction) => (
@@ -140,10 +136,10 @@ const WalletScreen: React.FC = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: theme.background,
     },
     header: {
         flexDirection: 'row',
@@ -156,14 +152,14 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 12,
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         justifyContent: 'center',
         alignItems: 'center',
     },
     headerTitle: {
         fontSize: Typography.sizes.xl,
         fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
     },
     menuButton: {
         width: 40,
@@ -178,9 +174,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingBottom: 100,
     },
-    // Balance Card
     balanceCard: {
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         borderRadius: 20,
         padding: 24,
         marginTop: 8,
@@ -194,10 +189,10 @@ const styles = StyleSheet.create({
     },
     balanceLabel: {
         fontSize: Typography.sizes.sm,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
     },
     creditsBadge: {
-        backgroundColor: Colors.primary,
+        backgroundColor: theme.primary,
         paddingHorizontal: 12,
         paddingVertical: 4,
         borderRadius: 6,
@@ -205,17 +200,17 @@ const styles = StyleSheet.create({
     creditsText: {
         fontSize: Typography.sizes.xs,
         fontWeight: Typography.weights.semibold,
-        color: Colors.textPrimary,
+        color: '#FFFFFF',
     },
     balanceAmount: {
         fontSize: 36,
         fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         marginBottom: 4,
     },
     monthlyAdded: {
         fontSize: Typography.sizes.sm,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
         marginBottom: 16,
     },
     activeAccount: {
@@ -231,13 +226,12 @@ const styles = StyleSheet.create({
     },
     activeText: {
         fontSize: Typography.sizes.sm,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
     },
-    // Quick Top-Up
     sectionTitle: {
         fontSize: Typography.sizes.sm,
         fontWeight: Typography.weights.semibold,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
         letterSpacing: 1,
         marginBottom: 16,
     },
@@ -245,7 +239,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: Colors.primary,
+        backgroundColor: theme.primary,
         borderRadius: 30,
         paddingVertical: 14,
         gap: 8,
@@ -254,7 +248,7 @@ const styles = StyleSheet.create({
     addMoneyText: {
         fontSize: Typography.sizes.lg,
         fontWeight: Typography.weights.semibold,
-        color: Colors.background,
+        color: '#FFFFFF',
     },
     quickAmounts: {
         flexDirection: 'row',
@@ -263,7 +257,7 @@ const styles = StyleSheet.create({
     },
     quickAmountButton: {
         flex: 1,
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         borderRadius: 12,
         paddingVertical: 14,
         alignItems: 'center',
@@ -271,13 +265,12 @@ const styles = StyleSheet.create({
     quickAmountText: {
         fontSize: Typography.sizes.md,
         fontWeight: Typography.weights.medium,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
     },
-    // Transactions
     transactionsTitle: {
         fontSize: Typography.sizes.lg,
         fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         marginBottom: 16,
     },
     transactionsList: {
@@ -287,7 +280,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         borderRadius: 16,
         padding: 18,
     },
@@ -298,7 +291,7 @@ const styles = StyleSheet.create({
     transactionAmount: {
         fontSize: Typography.sizes.lg,
         fontWeight: Typography.weights.semibold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
     },
     creditAmount: {
         color: '#22C55E',
@@ -308,12 +301,12 @@ const styles = StyleSheet.create({
     },
     transactionDate: {
         fontSize: Typography.sizes.sm,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
         marginBottom: 2,
     },
     transactionTime: {
         fontSize: Typography.sizes.xs,
-        color: Colors.textMuted,
+        color: theme.textMuted,
     },
 });
 

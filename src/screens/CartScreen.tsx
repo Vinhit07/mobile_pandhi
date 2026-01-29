@@ -11,13 +11,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import Colors from '../constants/Colors';
 import Typography from '../constants/Typography';
 import { CartItemCard, OrderConfirmationModal } from '../components';
-import { useCart, CartItem } from '../context';
+import { useCart, useTheme, CartItem } from '../context';
 import { formatCurrency } from '../utils/currency';
 
-// Generate random order ID
 const generateOrderId = (): string => {
     const letters = 'FD';
     const numbers = Math.floor(1000 + Math.random() * 9000);
@@ -26,6 +24,7 @@ const generateOrderId = (): string => {
 
 const CartScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { theme } = useTheme();
     const {
         items,
         updateQuantity,
@@ -37,47 +36,43 @@ const CartScreen: React.FC = () => {
         clearCart,
     } = useCart();
 
-    // Modal state
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [orderId, setOrderId] = useState('');
     const [orderedItems, setOrderedItems] = useState<CartItem[]>([]);
     const [orderTotal, setOrderTotal] = useState(0);
 
+    const styles = createStyles(theme);
+
     const handlePlaceOrder = () => {
-        // Save order details before clearing cart
         setOrderId(generateOrderId());
         setOrderedItems([...items]);
         setOrderTotal(getTotal());
-
-        // Show modal
         setShowOrderModal(true);
     };
 
     const handleOrderDone = () => {
         setShowOrderModal(false);
         clearCart();
-        // Navigate to home
         navigation.navigate('Home' as never);
     };
 
-    // Empty cart state
     if (items.length === 0) {
         return (
             <SafeAreaView style={styles.container} edges={['top']}>
-                <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+                <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.background} />
                 <View style={styles.header}>
                     <TouchableOpacity
                         style={styles.backButton}
                         onPress={() => navigation.goBack()}
                     >
-                        <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
+                        <Ionicons name="chevron-back" size={24} color={theme.textPrimary} />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>My Cart</Text>
                     <View style={styles.placeholder} />
                 </View>
                 <View style={styles.emptyContainer}>
                     <View style={styles.emptyIconContainer}>
-                        <Ionicons name="cart-outline" size={64} color={Colors.primary} />
+                        <Ionicons name="cart-outline" size={64} color={theme.primary} />
                     </View>
                     <Text style={styles.emptyTitle}>Your Cart is Empty</Text>
                     <Text style={styles.emptySubtitle}>
@@ -90,15 +85,14 @@ const CartScreen: React.FC = () => {
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+            <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.background} />
 
-            {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
+                    <Ionicons name="chevron-back" size={24} color={theme.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>My Cart</Text>
                 <View style={styles.placeholder} />
@@ -109,7 +103,6 @@ const CartScreen: React.FC = () => {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
             >
-                {/* Cart Items */}
                 <View style={styles.itemsSection}>
                     {items.map((item) => (
                         <CartItemCard
@@ -125,14 +118,13 @@ const CartScreen: React.FC = () => {
                     ))}
                 </View>
 
-                {/* Order Notes */}
                 <View style={styles.notesSection}>
                     <Text style={styles.notesTitle}>ORDER NOTES</Text>
                     <View style={styles.notesInputContainer}>
                         <TextInput
                             style={styles.notesInput}
                             placeholder="Do you have any special instructions for the restaurant?"
-                            placeholderTextColor={Colors.textMuted}
+                            placeholderTextColor={theme.textMuted}
                             value={orderNotes}
                             onChangeText={setOrderNotes}
                             multiline
@@ -141,13 +133,12 @@ const CartScreen: React.FC = () => {
                         <Ionicons
                             name="document-text-outline"
                             size={20}
-                            color={Colors.textMuted}
+                            color={theme.textMuted}
                             style={styles.notesIcon}
                         />
                     </View>
                 </View>
 
-                {/* Order Summary */}
                 <View style={styles.summarySection}>
                     <View style={styles.summaryRow}>
                         <Text style={styles.summaryLabel}>Subtotal</Text>
@@ -163,15 +154,13 @@ const CartScreen: React.FC = () => {
                         <Text style={styles.totalValue}>{formatCurrency(getTotal())}</Text>
                     </View>
 
-                    {/* Place Order Button */}
                     <TouchableOpacity style={styles.placeOrderButton} onPress={handlePlaceOrder}>
                         <Text style={styles.placeOrderText}>Place Order</Text>
-                        <Ionicons name="arrow-forward" size={20} color={Colors.textPrimary} />
+                        <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
                     </TouchableOpacity>
                 </View>
             </ScrollView>
 
-            {/* Order Confirmation Modal */}
             <OrderConfirmationModal
                 visible={showOrderModal}
                 orderId={orderId}
@@ -183,10 +172,10 @@ const CartScreen: React.FC = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: theme.background,
     },
     header: {
         flexDirection: 'row',
@@ -199,14 +188,14 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 12,
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         justifyContent: 'center',
         alignItems: 'center',
     },
     headerTitle: {
         fontSize: Typography.sizes.xl,
         fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
     },
     placeholder: {
         width: 40,
@@ -228,12 +217,12 @@ const styles = StyleSheet.create({
     notesTitle: {
         fontSize: Typography.sizes.sm,
         fontWeight: Typography.weights.semibold,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
         letterSpacing: 1,
         marginBottom: 12,
     },
     notesInputContainer: {
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         borderRadius: 16,
         padding: 16,
         flexDirection: 'row',
@@ -241,7 +230,7 @@ const styles = StyleSheet.create({
     notesInput: {
         flex: 1,
         fontSize: Typography.sizes.md,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         minHeight: 60,
         textAlignVertical: 'top',
     },
@@ -251,7 +240,7 @@ const styles = StyleSheet.create({
     summarySection: {
         marginHorizontal: 20,
         marginTop: 24,
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         borderRadius: 20,
         padding: 20,
     },
@@ -263,16 +252,16 @@ const styles = StyleSheet.create({
     },
     summaryLabel: {
         fontSize: Typography.sizes.md,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
     },
     summaryValue: {
         fontSize: Typography.sizes.md,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         fontWeight: Typography.weights.medium,
     },
     divider: {
         height: 1,
-        backgroundColor: Colors.border,
+        backgroundColor: theme.border,
         marginVertical: 12,
     },
     totalRow: {
@@ -284,18 +273,18 @@ const styles = StyleSheet.create({
     totalLabel: {
         fontSize: Typography.sizes.lg,
         fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
     },
     totalValue: {
         fontSize: Typography.sizes.xxl,
         fontWeight: Typography.weights.bold,
-        color: Colors.priceOrange,
+        color: theme.priceOrange,
     },
     placeOrderButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: Colors.primary,
+        backgroundColor: theme.primary,
         borderRadius: 30,
         paddingVertical: 16,
         gap: 8,
@@ -303,9 +292,8 @@ const styles = StyleSheet.create({
     placeOrderText: {
         fontSize: Typography.sizes.lg,
         fontWeight: Typography.weights.semibold,
-        color: Colors.textPrimary,
+        color: '#FFFFFF',
     },
-    // Empty state styles
     emptyContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -316,7 +304,7 @@ const styles = StyleSheet.create({
         width: 120,
         height: 120,
         borderRadius: 60,
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 24,
@@ -324,12 +312,12 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: Typography.sizes.xxl,
         fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         marginBottom: 8,
     },
     emptySubtitle: {
         fontSize: Typography.sizes.md,
-        color: Colors.textMuted,
+        color: theme.textMuted,
         textAlign: 'center',
         lineHeight: 22,
     },

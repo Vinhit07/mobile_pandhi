@@ -4,46 +4,54 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    StatusBar,
     ScrollView,
+    StatusBar,
+    Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
 import Typography from '../constants/Typography';
+import { useTheme } from '../context';
 
 interface ProfileMenuItemProps {
     icon: React.ReactNode;
     title: string;
     subtitle: string;
     onPress: () => void;
+    theme: any;
 }
 
 const ProfileMenuItem: React.FC<ProfileMenuItemProps> = ({
     icon,
     title,
     subtitle,
-    onPress
-}) => (
-    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
-        <View style={styles.menuItemIcon}>{icon}</View>
-        <View style={styles.menuItemContent}>
-            <Text style={styles.menuItemTitle}>{title}</Text>
-            <Text style={styles.menuItemSubtitle}>{subtitle}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={Colors.textMuted} />
-    </TouchableOpacity>
-);
+    onPress,
+    theme,
+}) => {
+    const styles = createStyles(theme);
+    return (
+        <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+            <View style={styles.menuItemIcon}>{icon}</View>
+            <View style={styles.menuItemContent}>
+                <Text style={styles.menuItemTitle}>{title}</Text>
+                <Text style={styles.menuItemSubtitle}>{subtitle}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
+        </TouchableOpacity>
+    );
+};
 
 const ProfileScreen: React.FC = () => {
+    const { theme, isDark, toggleTheme } = useTheme();
+    const styles = createStyles(theme);
+
     const handleLogout = () => {
-        // TODO: Implement logout logic
         console.log('Logout pressed');
     };
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+            <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.background} />
 
             {/* Header */}
             <View style={styles.header}>
@@ -58,7 +66,7 @@ const ProfileScreen: React.FC = () => {
                 {/* Profile Avatar */}
                 <View style={styles.avatarSection}>
                     <View style={styles.avatarContainer}>
-                        <Ionicons name="person" size={40} color={Colors.textSecondary} />
+                        <Ionicons name="person" size={40} color={theme.textSecondary} />
                     </View>
                     <Text style={styles.userName}>John Doe</Text>
                     <Text style={styles.userEmail}>john.doe@org.com</Text>
@@ -74,31 +82,59 @@ const ProfileScreen: React.FC = () => {
                     </View>
                 </View>
 
+                {/* Theme Toggle */}
+                <View style={styles.themeToggleContainer}>
+                    <View style={styles.themeToggleLeft}>
+                        <View style={styles.themeIconContainer}>
+                            <Ionicons
+                                name={isDark ? "moon" : "sunny"}
+                                size={22}
+                                color={theme.primary}
+                            />
+                        </View>
+                        <View>
+                            <Text style={styles.themeToggleTitle}>Dark Mode</Text>
+                            <Text style={styles.themeToggleSubtitle}>
+                                {isDark ? "Currently using dark theme" : "Currently using light theme"}
+                            </Text>
+                        </View>
+                    </View>
+                    <Switch
+                        value={isDark}
+                        onValueChange={toggleTheme}
+                        trackColor={{ false: '#E0E0E0', true: theme.primary }}
+                        thumbColor="#FFFFFF"
+                    />
+                </View>
+
                 {/* Menu Items */}
                 <View style={styles.menuSection}>
                     <ProfileMenuItem
-                        icon={<Ionicons name="heart" size={22} color={Colors.primary} />}
+                        icon={<Ionicons name="heart" size={22} color={theme.primary} />}
                         title="Favorite Items"
                         subtitle="Your most loved dishes"
                         onPress={() => { }}
+                        theme={theme}
                     />
                     <ProfileMenuItem
-                        icon={<Ionicons name="time" size={22} color={Colors.primary} />}
+                        icon={<Ionicons name="time" size={22} color={theme.primary} />}
                         title="Order History"
                         subtitle="Past meals & reordering"
                         onPress={() => { }}
+                        theme={theme}
                     />
                     <ProfileMenuItem
-                        icon={<Ionicons name="star" size={22} color={Colors.primary} />}
+                        icon={<Ionicons name="star" size={22} color={theme.primary} />}
                         title="Your Reviews"
                         subtitle="Ratings given to items"
                         onPress={() => { }}
+                        theme={theme}
                     />
                 </View>
 
                 {/* Logout Button */}
                 <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                    <Ionicons name="log-out-outline" size={22} color={Colors.primary} />
+                    <Ionicons name="log-out-outline" size={22} color={theme.primary} />
                     <Text style={styles.logoutText}>Logout</Text>
                 </TouchableOpacity>
             </ScrollView>
@@ -106,10 +142,10 @@ const ProfileScreen: React.FC = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: theme.background,
     },
     header: {
         alignItems: 'center',
@@ -118,7 +154,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: Typography.sizes.xl,
         fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
     },
     scrollView: {
         flex: 1,
@@ -126,7 +162,6 @@ const styles = StyleSheet.create({
     scrollContent: {
         paddingBottom: 100,
     },
-    // Avatar Section
     avatarSection: {
         alignItems: 'center',
         marginTop: 16,
@@ -136,7 +171,7 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16,
@@ -144,30 +179,63 @@ const styles = StyleSheet.create({
     userName: {
         fontSize: Typography.sizes.xxl,
         fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         marginBottom: 4,
     },
     userEmail: {
         fontSize: Typography.sizes.md,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
     },
-    // Tags
     tagsContainer: {
         flexDirection: 'row',
         justifyContent: 'center',
         gap: 12,
-        marginBottom: 32,
+        marginBottom: 24,
         paddingHorizontal: 20,
     },
     tag: {
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderRadius: 20,
     },
     tagText: {
         fontSize: Typography.sizes.sm,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
+    },
+    // Theme Toggle
+    themeToggleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: theme.cardBackground,
+        marginHorizontal: 20,
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 24,
+    },
+    themeToggleLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    themeIconContainer: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 107, 53, 0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 14,
+    },
+    themeToggleTitle: {
+        fontSize: Typography.sizes.lg,
+        fontWeight: Typography.weights.semibold,
+        color: theme.textPrimary,
+        marginBottom: 2,
+    },
+    themeToggleSubtitle: {
+        fontSize: Typography.sizes.sm,
+        color: theme.textSecondary,
     },
     // Menu Items
     menuSection: {
@@ -177,7 +245,7 @@ const styles = StyleSheet.create({
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         borderRadius: 16,
         padding: 16,
         marginBottom: 12,
@@ -197,19 +265,18 @@ const styles = StyleSheet.create({
     menuItemTitle: {
         fontSize: Typography.sizes.lg,
         fontWeight: Typography.weights.semibold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         marginBottom: 2,
     },
     menuItemSubtitle: {
         fontSize: Typography.sizes.sm,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
     },
-    // Logout Button
     logoutButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         marginHorizontal: 20,
         borderRadius: 16,
         paddingVertical: 16,
@@ -218,7 +285,7 @@ const styles = StyleSheet.create({
     logoutText: {
         fontSize: Typography.sizes.lg,
         fontWeight: Typography.weights.medium,
-        color: Colors.primary,
+        color: theme.primary,
     },
 });
 
