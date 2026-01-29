@@ -206,7 +206,7 @@ const PopupDetailScreen: React.FC = () => {
                 <View style={styles.cartBar}>
                     <TouchableOpacity
                         style={styles.cartBarContent}
-                        onPress={() => navigation.navigate('Cart' as never)}
+                        onPress={() => navigation.navigate('MainTabs' as never, { screen: 'Cart' } as never)}
                     >
                         <View style={styles.cartBadge}>
                             <Text style={styles.cartBadgeText}>{cartItemCount}</Text>

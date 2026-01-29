@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
     View,
     Text,
@@ -22,6 +22,11 @@ const generateOrderId = (): string => {
     return `${letters}-${numbers}`;
 };
 
+// Group items by their category (source)
+interface GroupedItems {
+    [category: string]: CartItem[];
+}
+
 const CartScreen: React.FC = () => {
     const navigation = useNavigation();
     const { theme } = useTheme();
@@ -42,6 +47,26 @@ const CartScreen: React.FC = () => {
     const [orderTotal, setOrderTotal] = useState(0);
 
     const styles = createStyles(theme);
+
+    // Group items by category
+    const groupedItems = useMemo(() => {
+        return items.reduce<GroupedItems>((groups, item) => {
+            const category = item.category || 'Menu Items';
+            if (!groups[category]) {
+                groups[category] = [];
+            }
+            groups[category].push(item);
+            return groups;
+        }, {});
+    }, [items]);
+
+    // Check if there are popup items (items not from favorites or regular menu)
+    const popupCategories = Object.keys(groupedItems).filter(
+        cat => !['beverages', 'snacks', 'meals', 'juices', 'main', 'favorites'].includes(cat.toLowerCase())
+    );
+    const regularCategories = Object.keys(groupedItems).filter(
+        cat => ['beverages', 'snacks', 'meals', 'juices', 'main', 'favorites'].includes(cat.toLowerCase())
+    );
 
     const handlePlaceOrder = () => {
         setOrderId(generateOrderId());
@@ -83,6 +108,29 @@ const CartScreen: React.FC = () => {
         );
     }
 
+    const renderItemsForCategory = (category: string, categoryItems: CartItem[]) => (
+        <View key={category} style={styles.categorySection}>
+            <View style={styles.categoryHeader}>
+                <View style={styles.categoryBadge}>
+                    <Ionicons name="storefront" size={14} color="#FFFFFF" />
+                </View>
+                <Text style={styles.categoryTitle}>{category.toUpperCase()}</Text>
+            </View>
+            {categoryItems.map((item) => (
+                <CartItemCard
+                    key={item.id}
+                    name={item.name}
+                    variant={item.variant}
+                    price={item.price}
+                    quantity={item.quantity}
+                    image={item.image}
+                    onIncrease={() => updateQuantity(item.id, item.quantity + 1)}
+                    onDecrease={() => updateQuantity(item.id, item.quantity - 1)}
+                />
+            ))}
+        </View>
+    );
+
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.background} />
@@ -103,20 +151,40 @@ const CartScreen: React.FC = () => {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
             >
-                <View style={styles.itemsSection}>
-                    {items.map((item) => (
-                        <CartItemCard
-                            key={item.id}
-                            name={item.name}
-                            variant={item.variant}
-                            price={item.price}
-                            quantity={item.quantity}
-                            image={item.image}
-                            onIncrease={() => updateQuantity(item.id, item.quantity + 1)}
-                            onDecrease={() => updateQuantity(item.id, item.quantity - 1)}
-                        />
-                    ))}
-                </View>
+                {/* Pop-up Items Section */}
+                {popupCategories.length > 0 && (
+                    <View style={styles.itemsSection}>
+                        <Text style={styles.sectionLabel}>POP-UP ORDERS</Text>
+                        {popupCategories.map(category =>
+                            renderItemsForCategory(category, groupedItems[category])
+                        )}
+                    </View>
+                )}
+
+                {/* Regular Menu Items Section */}
+                {regularCategories.length > 0 && (
+                    <View style={styles.itemsSection}>
+                        {popupCategories.length > 0 && (
+                            <Text style={styles.sectionLabel}>MENU ITEMS</Text>
+                        )}
+                        {regularCategories.map(category => (
+                            <View key={category}>
+                                {groupedItems[category].map((item) => (
+                                    <CartItemCard
+                                        key={item.id}
+                                        name={item.name}
+                                        variant={item.variant}
+                                        price={item.price}
+                                        quantity={item.quantity}
+                                        image={item.image}
+                                        onIncrease={() => updateQuantity(item.id, item.quantity + 1)}
+                                        onDecrease={() => updateQuantity(item.id, item.quantity - 1)}
+                                    />
+                                ))}
+                            </View>
+                        ))}
+                    </View>
+                )}
 
                 <View style={styles.notesSection}>
                     <Text style={styles.notesTitle}>ORDER NOTES</Text>
@@ -209,6 +277,36 @@ const createStyles = (theme: any) => StyleSheet.create({
     itemsSection: {
         paddingHorizontal: 20,
         marginTop: 8,
+    },
+    sectionLabel: {
+        fontSize: Typography.sizes.sm,
+        fontWeight: Typography.weights.bold,
+        color: theme.textSecondary,
+        letterSpacing: 1,
+        marginBottom: 12,
+        marginTop: 8,
+    },
+    categorySection: {
+        marginBottom: 16,
+    },
+    categoryHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        gap: 8,
+    },
+    categoryBadge: {
+        width: 24,
+        height: 24,
+        borderRadius: 6,
+        backgroundColor: theme.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    categoryTitle: {
+        fontSize: Typography.sizes.md,
+        fontWeight: Typography.weights.semibold,
+        color: theme.textPrimary,
     },
     notesSection: {
         paddingHorizontal: 20,
