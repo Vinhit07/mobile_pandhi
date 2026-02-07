@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { useToast } from './ToastContext';
 import { MenuItem } from '../data/menuData';
 
 export interface CartItem extends MenuItem {
@@ -24,8 +25,10 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [items, setItems] = useState<CartItem[]>([]);
     const [orderNotes, setOrderNotes] = useState('');
+    const { showToast } = useToast();
 
     const addItem = (item: MenuItem, variant?: string) => {
+        showToast('Item added to cart');
         setItems((prevItems) => {
             const existingItem = prevItems.find((i) => i.id === item.id);
             if (existingItem) {

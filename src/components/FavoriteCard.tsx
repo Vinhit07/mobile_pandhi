@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import Typography from '../constants/Typography';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { formatCurrency } from '../utils/currency';
 import { useTheme } from '../context';
 
@@ -8,7 +7,7 @@ interface FavoriteCardProps {
     name: string;
     lastOrdered: string;
     price: number;
-    image: string;
+    image?: string; // Optional, not used in new design
     onOrderAgain: () => void;
 }
 
@@ -16,64 +15,77 @@ const FavoriteCard: React.FC<FavoriteCardProps> = ({
     name,
     lastOrdered,
     price,
-    image,
     onOrderAgain,
 }) => {
     const { theme } = useTheme();
     const styles = createStyles(theme);
 
     return (
-        <View style={styles.container}>
-            <Image source={{ uri: image }} style={styles.image} />
-            <View style={styles.content}>
+        <TouchableOpacity
+            style={styles.container}
+            onPress={onOrderAgain}
+            activeOpacity={0.95}
+        >
+            <View style={styles.header}>
                 <Text style={styles.name} numberOfLines={1}>{name}</Text>
-                <Text style={styles.details}>Ordered {lastOrdered} • {formatCurrency(price)}</Text>
-                <TouchableOpacity style={styles.orderButton} onPress={onOrderAgain}>
-                    <Text style={styles.orderButtonText}>Order Again</Text>
-                </TouchableOpacity>
+                <Text style={styles.price}>{formatCurrency(price)}</Text>
             </View>
-        </View>
+            <Text style={styles.lastOrdered}>Last ordered on {lastOrdered}</Text>
+            <TouchableOpacity style={styles.reorderButton} onPress={onOrderAgain} activeOpacity={0.8}>
+                <Text style={styles.reorderText}>REORDER</Text>
+            </TouchableOpacity>
+        </TouchableOpacity>
     );
 };
 
 const createStyles = (theme: any) => StyleSheet.create({
     container: {
-        width: 160,
+        minWidth: 180,
         backgroundColor: theme.cardBackground,
         borderRadius: 16,
-        overflow: 'hidden',
+        padding: 16,
         marginRight: 12,
+        borderWidth: 1,
+        borderColor: theme.border,
     },
-    image: {
-        width: '100%',
-        height: 100,
-        backgroundColor: theme.categoryBackground,
-    },
-    content: {
-        padding: 12,
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 4,
+        gap: 8,
     },
     name: {
-        fontSize: Typography.sizes.md,
-        fontWeight: Typography.weights.semibold,
+        fontSize: 14,
+        fontWeight: '700',
         color: theme.textPrimary,
-        marginBottom: 4,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        flex: 1,
     },
-    details: {
-        fontSize: Typography.sizes.xs,
-        color: theme.textSecondary,
-        marginBottom: 10,
+    price: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: theme.primary,
+        fontFamily: 'PlusJakartaSans_700Bold',
     },
-    orderButton: {
+    lastOrdered: {
+        fontSize: 10,
+        color: theme.textMuted,
+        fontFamily: 'PlusJakartaSans_500Medium',
+        marginBottom: 12,
+    },
+    reorderButton: {
         backgroundColor: theme.primary,
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        alignSelf: 'flex-start',
+        paddingVertical: 10,
+        borderRadius: 8,
+        alignItems: 'center',
     },
-    orderButtonText: {
-        fontSize: Typography.sizes.xs,
-        fontWeight: Typography.weights.semibold,
-        color: '#FFFFFF',
+    reorderText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: theme.brownDark,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        letterSpacing: 0.5,
     },
 });
 

@@ -17,6 +17,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Typography from '../constants/Typography';
 import { useTheme, useCart } from '../context';
 import { formatCurrency } from '../utils/currency';
+import { ViewCartPopup } from '../components';
 
 const { width } = Dimensions.get('window');
 
@@ -195,33 +196,14 @@ const PopupDetailScreen: React.FC = () => {
                             style={styles.addButton}
                             onPress={() => handleAddItem(item)}
                         >
-                            <Ionicons name="add" size={20} color="#FFFFFF" />
+                            <Ionicons name="add" size={20} color="#541C0D" />
                         </TouchableOpacity>
                     </View>
                 ))}
             </ScrollView>
 
-            {/* Cart Bar */}
-            {cartItemCount > 0 && (
-                <View style={styles.cartBar}>
-                    <TouchableOpacity
-                        style={styles.cartBarContent}
-                        onPress={() => navigation.navigate('MainTabs' as never, { screen: 'Cart' } as never)}
-                    >
-                        <View style={styles.cartBadge}>
-                            <Text style={styles.cartBadgeText}>{cartItemCount}</Text>
-                        </View>
-                        <View style={styles.cartInfo}>
-                            <Text style={styles.cartViewText}>VIEW CART</Text>
-                            <Text style={styles.cartFromText}>{popup.name.toUpperCase()}'S</Text>
-                        </View>
-                        <View style={styles.cartTotalContainer}>
-                            <Text style={styles.cartTotal}>{formatCurrency(cartTotal)}</Text>
-                            <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-                        </View>
-                    </TouchableOpacity>
-                </View>
-            )}
+            {/* View Cart Popup */}
+            <ViewCartPopup />
         </View>
     );
 };

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
     View,
@@ -31,7 +32,7 @@ const sampleTransactions: Transaction[] = [
 ];
 
 const WalletScreen: React.FC = () => {
-    const navigation = useNavigation();
+    const navigation = useNavigation<any>();
     const { theme } = useTheme();
     const [balance] = useState(1450.50);
     const [monthlyAdded] = useState(500.00);
@@ -88,24 +89,11 @@ const WalletScreen: React.FC = () => {
 
                 <Text style={styles.sectionTitle}>QUICK TOP-UP</Text>
                 <TouchableOpacity style={styles.addMoneyButton} onPress={handleAddMoney}>
-                    <Ionicons name="add" size={20} color="#FFFFFF" />
+                    <Ionicons name="add" size={20} color="#4A2820" />
                     <Text style={styles.addMoneyText}>Add Money</Text>
                 </TouchableOpacity>
 
-                <View style={styles.quickAmounts}>
-                    <TouchableOpacity
-                        style={styles.quickAmountButton}
-                        onPress={() => handleQuickTopUp(500)}
-                    >
-                        <Text style={styles.quickAmountText}>+ {CURRENCY_SYMBOL}500</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.quickAmountButton}
-                        onPress={() => handleQuickTopUp(1000)}
-                    >
-                        <Text style={styles.quickAmountText}>+ {CURRENCY_SYMBOL}1000</Text>
-                    </TouchableOpacity>
-                </View>
+                {/* Quick amounts removed as requested */}
 
                 <Text style={styles.transactionsTitle}>Recent Transactions</Text>
                 <View style={styles.transactionsList}>
@@ -200,7 +188,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     creditsText: {
         fontSize: Typography.sizes.xs,
         fontWeight: Typography.weights.semibold,
-        color: '#FFFFFF',
+        color: '#541C0D', // Updated to brown
     },
     balanceAmount: {
         fontSize: 36,
@@ -248,7 +236,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     addMoneyText: {
         fontSize: Typography.sizes.lg,
         fontWeight: Typography.weights.semibold,
-        color: '#FFFFFF',
+        color: '#541C0D',
     },
     quickAmounts: {
         flexDirection: 'row',

@@ -8,11 +8,11 @@ import {
     Dimensions,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Typography from '../constants/Typography';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width - 80;
+const CARD_WIDTH = 300;
 
 interface PopupCardProps {
     id: string;
@@ -39,104 +39,121 @@ const PopupCard: React.FC<PopupCardProps> = ({
         if (onViewMenu) {
             onViewMenu();
         } else {
-            navigation.navigate('PopupDetail' as never, { popupId: id } as never);
+            (navigation as any).navigate('PopupDetail', { popupId: id });
         }
     };
 
     return (
-        <View style={styles.container}>
+        <TouchableOpacity
+            style={styles.container}
+            onPress={handleViewMenu}
+            activeOpacity={0.95}
+        >
             <ImageBackground
                 source={{ uri: image }}
                 style={styles.imageBackground}
                 imageStyle={styles.image}
             >
-                <View style={styles.overlay}>
+                <LinearGradient
+                    colors={['transparent', 'rgba(53, 28, 21, 0.4)', 'rgba(53, 28, 21, 0.9)']}
+                    locations={[0, 0.5, 1]}
+                    style={styles.gradient}
+                >
                     {isLive && (
                         <View style={styles.liveBadge}>
-                            <View style={styles.liveIndicator} />
-                            <Text style={styles.liveText}>LIVE NOW</Text>
+                            <Text style={styles.liveText}>Live Now</Text>
                         </View>
                     )}
-                    <View style={styles.content}>
-                        <Text style={styles.title}>{title}</Text>
-                        <Text style={styles.subtitle}>{subtitle}</Text>
+                    <View style={styles.bottomContent}>
+                        <View style={styles.textContainer}>
+                            <Text style={styles.title}>{title}</Text>
+                            <Text style={styles.subtitle}>{subtitle}</Text>
+                        </View>
+                        <TouchableOpacity
+                            style={styles.viewMenuButton}
+                            onPress={handleViewMenu}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={styles.viewMenuText}>View Menu</Text>
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity style={styles.viewMenuButton} onPress={handleViewMenu}>
-                        <Text style={styles.viewMenuText}>View Menu</Text>
-                    </TouchableOpacity>
-                </View>
+                </LinearGradient>
             </ImageBackground>
-        </View>
+        </TouchableOpacity>
     );
 };
 
 const createStyles = (theme: any) => StyleSheet.create({
     container: {
         width: CARD_WIDTH,
-        height: 160,
+        height: 180,
         marginRight: 16,
         borderRadius: 16,
         overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: theme.border,
     },
     imageBackground: {
         flex: 1,
-        justifyContent: 'flex-end',
     },
     image: {
         borderRadius: 16,
+        opacity: 0.9,
     },
-    overlay: {
+    gradient: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.4)',
         padding: 16,
         justifyContent: 'space-between',
     },
     liveBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#22C55E',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 6,
         alignSelf: 'flex-start',
-        gap: 6,
-    },
-    liveIndicator: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: theme.primary,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
     },
     liveText: {
-        fontSize: Typography.sizes.xs,
-        fontWeight: Typography.weights.bold,
-        color: '#FFFFFF',
+        fontSize: 10,
+        fontWeight: '700',
+        color: theme.brownDark,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
-    content: {
-        marginTop: 'auto',
-        marginBottom: 8,
+    bottomContent: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+    },
+    textContainer: {
+        flex: 1,
+        marginRight: 12,
     },
     title: {
-        fontSize: Typography.sizes.xl,
-        fontWeight: Typography.weights.bold,
+        fontSize: 20,
+        fontWeight: '700',
         color: '#FFFFFF',
+        fontFamily: 'PlusJakartaSans_700Bold',
         marginBottom: 4,
     },
     subtitle: {
-        fontSize: Typography.sizes.sm,
+        fontSize: 12,
         color: 'rgba(255, 255, 255, 0.8)',
+        fontFamily: 'PlusJakartaSans_500Medium',
     },
     viewMenuButton: {
-        backgroundColor: theme.primary,
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
         paddingVertical: 10,
         paddingHorizontal: 16,
         borderRadius: 8,
-        alignSelf: 'flex-start',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
     },
     viewMenuText: {
-        fontSize: Typography.sizes.sm,
-        fontWeight: Typography.weights.semibold,
+        fontSize: 12,
+        fontWeight: '700',
         color: '#FFFFFF',
+        fontFamily: 'PlusJakartaSans_700Bold',
     },
 });
 
