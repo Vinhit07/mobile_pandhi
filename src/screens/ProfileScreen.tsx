@@ -7,11 +7,12 @@ import {
     ScrollView,
     StatusBar,
     Switch,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Typography from '../constants/Typography';
-import { useTheme } from '../context';
+import { useTheme, useAuth } from '../context';
 
 interface ProfileMenuItemProps {
     icon: React.ReactNode;
@@ -43,10 +44,24 @@ const ProfileMenuItem: React.FC<ProfileMenuItemProps> = ({
 
 const ProfileScreen: React.FC = () => {
     const { theme, isDark, toggleTheme } = useTheme();
+    const { user, logout } = useAuth();
     const styles = createStyles(theme);
 
     const handleLogout = () => {
-        console.log('Logout pressed');
+        Alert.alert(
+            'Logout',
+            'Are you sure you want to logout?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Logout',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await logout();
+                    },
+                },
+            ]
+        );
     };
 
     return (
@@ -68,8 +83,8 @@ const ProfileScreen: React.FC = () => {
                     <View style={styles.avatarContainer}>
                         <Ionicons name="person" size={40} color={theme.textSecondary} />
                     </View>
-                    <Text style={styles.userName}>John Doe</Text>
-                    <Text style={styles.userEmail}>john.doe@org.com</Text>
+                    <Text style={styles.userName}>{user?.name || 'User'}</Text>
+                    <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
                 </View>
 
                 {/* Tags */}

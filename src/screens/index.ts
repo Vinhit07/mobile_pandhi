@@ -3,3 +3,4 @@ export { default as CartScreen } from './CartScreen';
 export { default as WalletScreen } from './WalletScreen';
 export { default as ProfileScreen } from './ProfileScreen';
 export { default as PopupDetailScreen } from './PopupDetailScreen';
+export { default as SignInScreen } from './SignInScreen';
