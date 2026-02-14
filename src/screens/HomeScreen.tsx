@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -6,8 +6,14 @@ import {
     ScrollView,
     FlatList,
     StatusBar,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Typography from '../constants/Typography';
+import { Header, SearchBar, FavoriteCard, MenuCategory, PopupCard } from '../components';
+import { menuCategories as mockMenuCategories, favoriteItems, popupItems, MenuItem as MenuItemType, MenuCategory as MenuCategoryType } from '../data/menuData';
+import { useCart, useTheme, useAuth } from '../context';
+import { getProducts } from '../services/productService';
 import { Header, SearchBar, FavoriteCard, PopupCard, CategoryCard } from '../components';
 import { menuCategories, favoriteItems, popupItems, MenuItem as MenuItemType } from '../data/menuData';
 import { useCart, useTheme } from '../context';
@@ -25,6 +31,9 @@ const getGreeting = (): string => {
 
 const HomeScreen: React.FC = ({ navigation }: any) => {
     const [searchQuery, setSearchQuery] = useState('');
+    const [menuCategories, setMenuCategories] = useState<MenuCategoryType[]>(mockMenuCategories);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isFromAPI, setIsFromAPI] = useState(false);
     // Categories data matching HTML reference
     const [categories] = useState([
         { id: '1', name: 'Main Meal', icon: 'restaurant' },
@@ -33,6 +42,27 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
     ]);
     const { addItem } = useCart();
     const { theme } = useTheme();
+    const { user } = useAuth();
+
+    // Fetch products from API on mount
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                setIsLoading(true);
+                const result = await getProducts();
+                setMenuCategories(result.categories);
+                setIsFromAPI(result.fromAPI);
+            } catch (error) {
+                console.log('[HomeScreen] Error fetching products:', error);
+                // Keep mock data on error
+                setMenuCategories(mockMenuCategories);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchProducts();
+    }, []);
 
     const handleOrderAgain = (item: MenuItemType) => {
         addItem(item);
@@ -49,7 +79,7 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
                 contentContainerStyle={styles.scrollContent}
             >
                 {/* Header */}
-                <Header userName="Alex" greeting={getGreeting()} />
+                <Header userName={user?.name?.split(' ')[0] || 'User'} greeting={getGreeting()} />
 
                 {/* Search Bar */}
                 <SearchBar

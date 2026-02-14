@@ -4,6 +4,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
+
+import { HomeScreen, CartScreen, WalletScreen, ProfileScreen, PopupDetailScreen, SignInScreen } from './src/screens';
+import { CartProvider, ThemeProvider, useTheme, AuthProvider, useAuth } from './src/context';
 import { View, StyleSheet, Text, ActivityIndicator } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import {
@@ -24,6 +29,7 @@ SplashScreen.preventAutoHideAsync();
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+const AuthStack = createNativeStackNavigator();
 
 function TabNavigator() {
   const { theme } = useTheme();
@@ -44,12 +50,46 @@ function TabNavigator() {
   );
 }
 
+function AuthNavigator() {
+  return (
+    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+      <AuthStack.Screen name="SignIn" component={SignInScreen} />
+    </AuthStack.Navigator>
+  );
+}
+
 function AppNavigator() {
   const { theme } = useTheme();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // Show loading screen while checking auth state
+  if (isLoading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <View style={[styles.loadingLogo, { backgroundColor: theme.cardBackground }]}>
+          <Ionicons name="fast-food" size={48} color={theme.primary} />
+        </View>
+        <Text style={[styles.loadingText, { color: theme.textPrimary }]}>Quick Byte</Text>
+        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 24 }} />
+      </View>
+    );
+  }
 
   return (
     <>
       <StatusBar style={theme.isDark ? 'light' : 'dark'} />
+      {isAuthenticated ? (
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="MainTabs" component={TabNavigator} />
+          <Stack.Screen
+            name="PopupDetail"
+            component={PopupDetailScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+        </Stack.Navigator>
+      ) : (
+        <AuthNavigator />
+      )}
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="MainTabs" component={TabNavigator} />
         <Stack.Screen
@@ -117,12 +157,14 @@ export default function App() {
   return (
     <SafeAreaProvider onLayout={onLayoutRootView}>
       <ThemeProvider>
+        <AuthProvider>
         <ToastProvider>
           <CartProvider>
             <NavigationContainer>
               <AppNavigator />
             </NavigationContainer>
           </CartProvider>
+        </AuthProvider>
         </ToastProvider>
       </ThemeProvider>
     </SafeAreaProvider>
@@ -136,4 +178,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#351C15',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingLogo: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  loadingText: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
 });
+
