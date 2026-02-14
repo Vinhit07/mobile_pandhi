@@ -13,12 +13,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../context';
-import Colors from '../constants/Colors';
+import { useAuth, useTheme } from '../context';
 import Typography from '../constants/Typography';
 
 const SignInScreen: React.FC = () => {
     const { login, register } = useAuth();
+    const { theme } = useTheme();
     const [isSignUp, setIsSignUp] = useState(false);
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
@@ -56,9 +56,11 @@ const SignInScreen: React.FC = () => {
         }
     };
 
+    const styles = createStyles(theme);
+
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+            <StatusBar barStyle={theme.statusBarStyle} backgroundColor={theme.background} />
             <KeyboardAvoidingView
                 style={styles.content}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -66,7 +68,7 @@ const SignInScreen: React.FC = () => {
                 {/* Logo */}
                 <View style={styles.brandSection}>
                     <View style={styles.logoContainer}>
-                        <Ionicons name="flash" size={40} color={Colors.primary} />
+                        <Ionicons name="flash" size={40} color={theme.primary} />
                     </View>
                     <Text style={styles.brandName}>Quick Byte</Text>
                     <Text style={styles.brandTagline}>
@@ -78,11 +80,11 @@ const SignInScreen: React.FC = () => {
                     {/* Name (sign up only) */}
                     {isSignUp && (
                         <View style={styles.inputContainer}>
-                            <Ionicons name="person-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
+                            <Ionicons name="person-outline" size={20} color={theme.textMuted} style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
                                 placeholder="Full name"
-                                placeholderTextColor={Colors.textMuted}
+                                placeholderTextColor={theme.textMuted}
                                 value={name}
                                 onChangeText={setName}
                                 autoCapitalize="words"
@@ -92,11 +94,11 @@ const SignInScreen: React.FC = () => {
 
                     {/* Email */}
                     <View style={styles.inputContainer}>
-                        <Ionicons name="mail-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
+                        <Ionicons name="mail-outline" size={20} color={theme.textMuted} style={styles.inputIcon} />
                         <TextInput
                             style={styles.input}
                             placeholder="Email address"
-                            placeholderTextColor={Colors.textMuted}
+                            placeholderTextColor={theme.textMuted}
                             value={email}
                             onChangeText={setEmail}
                             keyboardType="email-address"
@@ -107,11 +109,11 @@ const SignInScreen: React.FC = () => {
 
                     {/* Password */}
                     <View style={styles.inputContainer}>
-                        <Ionicons name="lock-closed-outline" size={20} color={Colors.textMuted} style={styles.inputIcon} />
+                        <Ionicons name="lock-closed-outline" size={20} color={theme.textMuted} style={styles.inputIcon} />
                         <TextInput
                             style={styles.input}
                             placeholder="Password"
-                            placeholderTextColor={Colors.textMuted}
+                            placeholderTextColor={theme.textMuted}
                             value={password}
                             onChangeText={setPassword}
                             secureTextEntry={!showPassword}
@@ -120,7 +122,7 @@ const SignInScreen: React.FC = () => {
                             <Ionicons
                                 name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                                 size={20}
-                                color={Colors.textMuted}
+                                color={theme.textMuted}
                             />
                         </TouchableOpacity>
                     </View>
@@ -160,10 +162,10 @@ const SignInScreen: React.FC = () => {
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: theme.background,
     },
     content: {
         flex: 1,
@@ -178,22 +180,22 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 24,
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 20,
         borderWidth: 1,
-        borderColor: Colors.border,
+        borderColor: theme.border,
     },
     brandName: {
         fontSize: 32,
         fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         marginBottom: 8,
     },
     brandTagline: {
         fontSize: Typography.sizes.md,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
     },
     formSection: {
         gap: 16,
@@ -201,10 +203,10 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.cardBackground,
+        backgroundColor: theme.cardBackground,
         borderRadius: 16,
         borderWidth: 1,
-        borderColor: Colors.border,
+        borderColor: theme.border,
         paddingHorizontal: 16,
     },
     inputIcon: {
@@ -213,11 +215,11 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         height: 56,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         fontSize: Typography.sizes.md,
     },
     primaryButton: {
-        backgroundColor: Colors.primary,
+        backgroundColor: theme.primary,
         borderRadius: 16,
         height: 56,
         alignItems: 'center',
@@ -237,10 +239,10 @@ const styles = StyleSheet.create({
     },
     toggleText: {
         fontSize: Typography.sizes.sm,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
     },
     toggleHighlight: {
-        color: Colors.primary,
+        color: theme.primary,
         fontWeight: Typography.weights.semibold,
     },
 });

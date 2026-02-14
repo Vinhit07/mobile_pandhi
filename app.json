@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "mobile_pandhi",
-    "slug": "mobile_pandhi",
+    "slug": "pandhi",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -16,6 +16,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.hungerbox.pandhi",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -32,7 +33,21 @@
       }
     },
     "plugins": [
-      "expo-font"
-    ]
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+            "android": {
+                "usesCleartextTraffic": true
+            }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5e5294e5-b880-4ada-9b99-38309ca326e1"
+      }
+    },
+    "owner": "pavan_2503"
   }
 }

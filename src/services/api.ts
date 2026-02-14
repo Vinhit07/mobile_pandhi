@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Base URL for the backend API
 // Use localhost for PC/emulator testing
 // Use your computer's local IP (e.g., 192.168.29.163) for physical phone testing
-export const API_BASE_URL = 'https://common-frogs-pull.loca.lt/api';
+export const API_BASE_URL = 'http://192.168.29.92:5500/api';
 
 // Storage key for auth token
 const TOKEN_KEY = 'auth_token';
@@ -70,6 +70,8 @@ export const apiRequest = async <T>(
 ): Promise<ApiResponse<T>> => {
     const { method = 'GET', body, requireAuth = true } = options;
 
+    console.log(`[API] ${method} ${endpoint} - Auth required: ${requireAuth}`);
+
     try {
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
@@ -78,6 +80,8 @@ export const apiRequest = async <T>(
         // Add auth header if required
         if (requireAuth) {
             const token = await getAuthToken();
+            console.log(`[API] Token status:`, token ? `Token found (${token.substring(0, 20)}...)` : 'NO TOKEN');
+
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;
             } else {
@@ -102,6 +106,8 @@ export const apiRequest = async <T>(
         const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
         const data = await response.json();
 
+        console.log(`[API] ${method} ${endpoint} - Response status: ${response.status}`);
+
         if (!response.ok) {
             return {
                 data: null,
@@ -116,7 +122,7 @@ export const apiRequest = async <T>(
             status: response.status,
         };
     } catch (error) {
-        console.error(`API Error [${endpoint}]:`, error);
+        console.error(`[API] Error [${endpoint}]:`, error);
         return {
             data: null,
             error: error instanceof Error ? error.message : 'Network error',

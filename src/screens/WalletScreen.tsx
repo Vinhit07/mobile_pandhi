@@ -1,6 +1,4 @@
 import React, { useState, useCallback } from 'react';
-
-import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -21,7 +19,7 @@ import { formatCurrency, CURRENCY_SYMBOL } from '../utils/currency';
 import { useTheme, useAuth } from '../context';
 import { getWalletDetails, getRecentTransactions, WalletTransaction } from '../services/walletService';
 import { getRazorpayKey, createWalletRechargeOrder, verifyWalletRecharge } from '../services/paymentService';
-import RazorpayCheckout from '../components/RazorpayCheckout';
+// NOTE: RazorpayCheckout will be imported dynamically when needed
 
 interface DisplayTransaction {
     id: string;
@@ -80,8 +78,6 @@ const WalletScreen: React.FC = () => {
     // Razorpay state
     const [showAmountModal, setShowAmountModal] = useState(false);
     const [customAmount, setCustomAmount] = useState('');
-    const [showCheckout, setShowCheckout] = useState(false);
-    const [checkoutData, setCheckoutData] = useState<{ orderId: string; amount: number; keyId: string } | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
     const styles = createStyles(theme);
@@ -116,6 +112,8 @@ const WalletScreen: React.FC = () => {
     };
 
     const initiateRecharge = async (amount: number) => {
+        console.log('[WalletScreen] initiateRecharge called with amount:', amount);
+
         if (amount < 1) {
             Alert.alert('Invalid Amount', 'Minimum recharge amount is ₹1.');
             return;
@@ -124,56 +122,86 @@ const WalletScreen: React.FC = () => {
         setIsProcessing(true);
         try {
             // Get Razorpay key
+            console.log('[WalletScreen] Fetching Razorpay key...');
             const keyId = await getRazorpayKey();
+            console.log('[WalletScreen] Got keyId:', keyId);
+
             if (!keyId) {
                 Alert.alert('Error', 'Payment gateway not configured.');
+                setIsProcessing(false);
                 return;
             }
 
             // Create recharge order
+            console.log('[WalletScreen] Creating recharge order for amount:', amount);
             const result = await createWalletRechargeOrder(amount);
+            console.log('[WalletScreen] Order creation result:', result);
+
             if (!result.success || !result.orderId) {
                 Alert.alert('Error', result.error || 'Failed to create payment order.');
+                setIsProcessing(false);
                 return;
             }
 
-            setCheckoutData({
-                orderId: result.orderId,
-                amount: result.amount!, // in paise
-                keyId,
-            });
+            // Close amount modal
             setShowAmountModal(false);
-            setShowCheckout(true);
+
+            console.log('[WalletScreen] ✅ Opening Razorpay SDK');
+
+            // Import Razorpay
+            const RazorpayCheckout = require('react-native-razorpay').default;
+
+            const options = {
+                description: `Wallet Recharge for ₹${amount}`,
+                currency: 'INR',
+                key: keyId,
+                amount: result.amount!, // in paise
+                name: 'UPS',
+                order_id: result.orderId,
+                prefill: {
+                    email: user?.email || 'customer@ups.com',
+                    name: user?.name || 'Customer'
+                },
+                theme: { color: '#FF6B35' }
+            };
+
+            RazorpayCheckout.open(options).then(async (data: any) => {
+                console.log('[WalletScreen] ✅ Payment successful!', data);
+                setIsProcessing(true);
+                try {
+                    const verifyResponse = await verifyWalletRecharge({
+                        razorpay_order_id: data.razorpay_order_id,
+                        razorpay_payment_id: data.razorpay_payment_id,
+                        razorpay_signature: data.razorpay_signature,
+                    });
+                    if (verifyResponse.success) {
+                        Alert.alert('Success', 'Wallet recharged successfully! ✅');
+                        fetchWalletData();
+                    } else {
+                        Alert.alert('Error', verifyResponse.error || 'Payment verification failed');
+                    }
+                } catch (error) {
+                    console.error('[WalletScreen] Verification error:', error);
+                    Alert.alert('Error', 'Payment verification failed');
+                } finally {
+                    setIsProcessing(false);
+                }
+            }).catch((error: any) => {
+                console.log('[WalletScreen] Payment cancelled/failed:', error);
+                if (error.code !== 0) {
+                    // 0 = cancelled by user
+                    Alert.alert('Payment Failed', 'Please try again.');
+                }
+                setIsProcessing(false);
+            });
         } catch (error) {
+            console.error('[WalletScreen] Error in initiateRecharge:', error);
             Alert.alert('Error', 'Something went wrong. Please try again.');
-        } finally {
             setIsProcessing(false);
         }
     };
 
-    const handlePaymentSuccess = async (data: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
-        setShowCheckout(false);
-        setIsProcessing(true);
 
-        try {
-            const result = await verifyWalletRecharge(
-                data.razorpay_order_id,
-                data.razorpay_payment_id,
-                data.razorpay_signature
-            );
-
-            if (result.success) {
-                Alert.alert('Success! 🎉', 'Wallet recharged successfully!');
-                fetchWalletData();
-            } else {
-                Alert.alert('Verification Failed', result.error || 'Please contact support.');
-            }
-        } catch (error) {
-            Alert.alert('Error', 'Payment verification failed. Please contact support.');
-        } finally {
-            setIsProcessing(false);
-        }
-    };
 
     const handleAddMoney = () => {
         setCustomAmount('');
@@ -234,24 +262,6 @@ const WalletScreen: React.FC = () => {
                         <Ionicons name="add" size={20} color="#FFFFFF" />
                         <Text style={styles.addMoneyText}>Add Money</Text>
                     </TouchableOpacity>
-                    <Text style={styles.balanceAmount}>{formatCurrency(balance)}</Text>
-                    <Text style={styles.monthlyAdded}>
-                        + {formatCurrency(monthlyAdded)} added this month
-                    </Text>
-                    <View style={styles.activeAccount}>
-                        <View style={styles.activeIndicator} />
-                        <Text style={styles.activeText}>Active Account</Text>
-                    </View>
-                </View>
-
-                <Text style={styles.sectionTitle}>QUICK TOP-UP</Text>
-                <TouchableOpacity style={styles.addMoneyButton} onPress={handleAddMoney}>
-                    <Ionicons name="add" size={20} color="#4A2820" />
-                    <Text style={styles.addMoneyText}>Add Money</Text>
-                </TouchableOpacity>
-
-                {/* Quick amounts removed as requested */}
-
                     <View style={styles.quickAmounts}>
                         <TouchableOpacity
                             style={styles.quickAmountButton}
@@ -377,21 +387,6 @@ const WalletScreen: React.FC = () => {
                     </View>
                 </View>
             </Modal>
-
-            {/* Razorpay Checkout */}
-            {checkoutData && (
-                <RazorpayCheckout
-                    visible={showCheckout}
-                    orderId={checkoutData.orderId}
-                    amount={checkoutData.amount}
-                    keyId={checkoutData.keyId}
-                    description="Wallet Recharge"
-                    prefillEmail={user?.email || ''}
-                    prefillName={user?.name || ''}
-                    onSuccess={handlePaymentSuccess}
-                    onDismiss={() => setShowCheckout(false)}
-                />
-            )}
 
             {/* Processing Overlay */}
             {isProcessing && (

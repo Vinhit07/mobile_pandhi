@@ -6,6 +6,7 @@ export interface MenuItem {
     price: number;
     image: string;
     category: string;
+    outletId?: number; // Optional for backward compatibility with mock data
 }
 
 export interface MenuCategory {

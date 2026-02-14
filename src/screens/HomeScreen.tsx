@@ -10,13 +10,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Typography from '../constants/Typography';
-import { Header, SearchBar, FavoriteCard, MenuCategory, PopupCard } from '../components';
-import { menuCategories as mockMenuCategories, favoriteItems, popupItems, MenuItem as MenuItemType, MenuCategory as MenuCategoryType } from '../data/menuData';
+import { Header, SearchBar, FavoriteCard, MenuCategory, PopupCard, CategoryCard } from '../components';
+import { MenuItem as MenuItemType, MenuCategory as MenuCategoryType, favoriteItems, popupItems } from '../data/menuData';
 import { useCart, useTheme, useAuth } from '../context';
-import { getProducts } from '../services/productService';
-import { Header, SearchBar, FavoriteCard, PopupCard, CategoryCard } from '../components';
-import { menuCategories, favoriteItems, popupItems, MenuItem as MenuItemType } from '../data/menuData';
-import { useCart, useTheme } from '../context';
+import { getProducts, getOutlets } from '../services/productService';
 
 // Helper function to get time-based greeting
 const getGreeting = (): string => {
@@ -31,37 +28,53 @@ const getGreeting = (): string => {
 
 const HomeScreen: React.FC = ({ navigation }: any) => {
     const [searchQuery, setSearchQuery] = useState('');
-    const [menuCategories, setMenuCategories] = useState<MenuCategoryType[]>(mockMenuCategories);
+    const [menuCategories, setMenuCategories] = useState<MenuCategoryType[]>([]);
+    const [categories, setCategories] = useState<Array<{ id: string; name: string; icon: string }>>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFromAPI, setIsFromAPI] = useState(false);
-    // Categories data matching HTML reference
-    const [categories] = useState([
-        { id: '1', name: 'Main Meal', icon: 'restaurant' },
-        { id: '2', name: 'Snacks', icon: 'cookie' },
-        { id: '3', name: 'Hot Brews', icon: 'coffee' },
-    ]);
+
     const { addItem } = useCart();
     const { theme } = useTheme();
     const { user } = useAuth();
 
-    // Fetch products from API on mount
+    // Fetch products and outlets from API on mount
     useEffect(() => {
-        const fetchProducts = async () => {
+        const fetchData = async () => {
             try {
+                console.log('[HomeScreen] Starting to fetch products and outlets...');
                 setIsLoading(true);
+
+                // Fetch products
                 const result = await getProducts();
+                console.log('[HomeScreen] Got products - Categories count:', result.categories.length);
+                console.log('[HomeScreen] From API:', result.fromAPI);
+
                 setMenuCategories(result.categories);
                 setIsFromAPI(result.fromAPI);
+
+                // Fetch outlets to use as categories
+                const outletsData = await getOutlets();
+                console.log('[HomeScreen] Got outlets:', outletsData.length);
+
+                // Transform outlets into category format
+                const outletCategories = outletsData.map((outlet: any) => ({
+                    id: String(outlet.id),
+                    name: outlet.name,
+                    icon: 'restaurant' // You can map outlet types to different icons if needed
+                }));
+
+                setCategories(outletCategories);
+                console.log('[HomeScreen] ✅ Data loaded successfully');
             } catch (error) {
-                console.log('[HomeScreen] Error fetching products:', error);
-                // Keep mock data on error
-                setMenuCategories(mockMenuCategories);
+                console.log('[HomeScreen] ❌ Error fetching data:', error);
+                setMenuCategories([]);
+                setCategories([]);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchProducts();
+        fetchData();
     }, []);
 
     const handleOrderAgain = (item: MenuItemType) => {
@@ -88,7 +101,7 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
                     placeholder="Search for your favorite meal..."
                 />
 
-                {/* Favorites Section */}
+                {/* Favorites Section - Mock data (API endpoint pending) */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Your Favorites</Text>
@@ -119,7 +132,7 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
                     />
                 </View>
 
-                {/* Pop ups Section */}
+                {/* Pop ups Section - Mock data (API endpoint pending) */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Pop up counters</Text>
@@ -142,7 +155,7 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
                     />
                 </View>
 
-                {/* Categories Section */}
+                {/* Categories Section - API Data */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Categories</Text>
@@ -158,22 +171,43 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
                                 name={item.name}
                                 icon={item.icon}
                                 onPress={() => {
-                                    if (item.name === 'Snacks') {
-                                        navigation.navigate('Snacks');
-                                    } else if (item.name === 'Main Meal') {
-                                        navigation.navigate('MainMeal');
-                                    } else if (item.name === 'Hot Brews') {
-                                        navigation.navigate('HotBeverages');
-                                    } else {
-                                        console.log('Category pressed:', item.name);
-                                    }
+                                    console.log('[HomeScreen] Outlet clicked:', item.name, 'Outlet ID:', item.id);
+
+                                    // Get all products from all categories
+                                    const allProducts = menuCategories.flatMap(cat => cat.items || []);
+                                    console.log('[HomeScreen] Total products available:', allProducts.length);
+
+                                    // Filter products by outlet ID
+                                    const outletId = parseInt(item.id);
+                                    const outletProducts = allProducts.filter((product: any) => {
+                                        const matches = product.outletId === outletId;
+                                        if (matches) {
+                                            console.log('[HomeScreen] Product matched:', product.name, 'outletId:', product.outletId);
+                                        }
+                                        return matches;
+                                    });
+
+                                    console.log('[HomeScreen] Products for outlet', item.name, ':', outletProducts.length);
+
+                                    // Create a category object with all outlet products
+                                    const outletCategory = {
+                                        id: item.id,
+                                        name: item.name,
+                                        items: outletProducts
+                                    };
+
+                                    // Navigate to CategoryDetailScreen
+                                    navigation.navigate('CategoryDetail', {
+                                        categoryData: outletCategory,
+                                        categoryName: item.name
+                                    });
                                 }}
                             />
                         )}
                     />
                 </View>
             </ScrollView>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 };
 

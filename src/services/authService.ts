@@ -31,12 +31,17 @@ export const signIn = async (
 
         const data = await response.json();
 
+        // DEBUG: Log the entire response to see structure
+        console.log('[AuthService] Signin response:', JSON.stringify(data, null, 2));
+
         if (!response.ok) {
             return { success: false, error: data.message || 'Sign in failed' };
         }
 
         // Store token
         const token = data.token || data.data?.token;
+        console.log('[AuthService] Extracted token:', token ? 'Token found' : 'NO TOKEN IN RESPONSE');
+
         if (token) {
             await setAuthToken(token);
         }

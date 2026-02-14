@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
     View,
     Text,
@@ -10,12 +10,11 @@ import {
     ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import Typography from '../constants/Typography';
 import { CartItemCard, OrderConfirmationModal } from '../components';
 import { useCart, useTheme, useAuth, CartItem } from '../context';
-import { useCart, useTheme } from '../context';
 import { formatCurrency } from '../utils/currency';
 import { placeOrder, PlaceOrderRequest } from '../services/orderService';
 import { isAuthenticated } from '../services/api';
@@ -29,6 +28,7 @@ const CartScreen: React.FC = () => {
     const {
         items,
         updateQuantity,
+        clearCart,
     } = useCart();
 
     const [showOrderModal, setShowOrderModal] = useState(false);
@@ -41,39 +41,13 @@ const CartScreen: React.FC = () => {
     // Razorpay state
     const [showCheckout, setShowCheckout] = useState(false);
     const [checkoutData, setCheckoutData] = useState<{ orderId: string; amount: number; keyId: string } | null>(null);
-    const mockItems = [
-        {
-            id: 'mock1',
-            name: 'Masala Dosa',
-            variant: 'Regular, Extra Chutney',
-            price: 80,
-            quantity: 1,
-            image: '',
-            category: 'Main Meal'
-        },
-        {
-            id: 'mock2',
-            name: 'Iced Latte',
-            variant: 'Oat Milk, No Sugar',
-            price: 120,
-            quantity: 1,
-            image: '',
-            category: 'Hot Brews'
-        }
-    ];
 
-    const displayItems = items.length > 0 ? items : mockItems;
+    // Use real cart items only - no mock data
+    const displayItems = items;
 
     const subtotal = displayItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
     const taxesAndCharges = 10;
     const grandTotal = subtotal + taxesAndCharges;
-
-    const popupCategories = Object.keys(groupedItems).filter(
-        cat => !['beverages', 'snacks', 'meals', 'juices', 'main', 'favorites'].includes(cat.toLowerCase())
-    );
-    const regularCategories = Object.keys(groupedItems).filter(
-        cat => ['beverages', 'snacks', 'meals', 'juices', 'main', 'favorites'].includes(cat.toLowerCase())
-    );
 
     const buildOrderData = (method: 'WALLET' | 'UPI' | 'CARD' | 'CASH'): PlaceOrderRequest => {
         const orderItems = items.map(item => ({
@@ -99,6 +73,10 @@ const CartScreen: React.FC = () => {
             setOrderId(generateOrderId());
             setOrderedItems([...items]);
             setOrderTotal(getTotal());
+
+            // Clear cart even in fallback mode
+            clearCart();
+
             setShowOrderModal(true);
             return;
         }
@@ -122,6 +100,10 @@ const CartScreen: React.FC = () => {
                 setOrderId(result.order.orderNumber || generateOrderId());
                 setOrderedItems([...items]);
                 setOrderTotal(result.order.totalAmount);
+
+                // Clear cart after successful order
+                clearCart();
+
                 setShowOrderModal(true);
             } else {
                 Alert.alert('Order Failed', result.error || 'Failed to place order.');
@@ -186,6 +168,10 @@ const CartScreen: React.FC = () => {
                 setOrderId(result.order.orderNumber || generateOrderId());
                 setOrderedItems([...items]);
                 setOrderTotal(result.order.totalAmount);
+
+                // Clear cart after successful order
+                clearCart();
+
                 setShowOrderModal(true);
             } else {
                 Alert.alert('Order Failed', result.error || 'Payment succeeded but order creation failed. Contact support.');
@@ -195,12 +181,17 @@ const CartScreen: React.FC = () => {
         } finally {
             setIsPlacing(false);
         }
-    const styles = createStyles(theme);
-
-    const handlePlaceOrder = () => {
-        // Navigate to payment screen instead of alert
-        (navigation as any).navigate('Payment', { total: grandTotal });
     };
+
+    const generateOrderId = () => `ORD-${Date.now()}`;
+    const getTotal = () => grandTotal;
+
+    const handleOrderDone = () => {
+        setShowOrderModal(false);
+        navigation.navigate('Home' as never);
+    };
+
+    const styles = createStyles(theme);
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -227,7 +218,7 @@ const CartScreen: React.FC = () => {
                         </TouchableOpacity>
                     </View>
                 ) : (
-                    <>
+                    <React.Fragment>
                         <View style={styles.itemsContainer}>
                             {displayItems.map((item) => (
                                 <View key={item.id} style={styles.itemCard}>
@@ -293,63 +284,63 @@ const CartScreen: React.FC = () => {
                             </View>
                         </View>
 
-                    {/* Payment Method Selector */}
-                    <Text style={styles.paymentMethodLabel}>PAYMENT METHOD</Text>
-                    <View style={styles.paymentMethods}>
-                        <TouchableOpacity
-                            style={[
-                                styles.paymentOption,
-                                paymentMethod === 'WALLET' && styles.paymentOptionActive,
-                            ]}
-                            onPress={() => setPaymentMethod('WALLET')}
-                        >
-                            <Ionicons
-                                name="wallet"
-                                size={20}
-                                color={paymentMethod === 'WALLET' ? theme.primary : theme.textMuted}
-                            />
-                            <Text style={[
-                                styles.paymentOptionText,
-                                paymentMethod === 'WALLET' && styles.paymentOptionTextActive,
-                            ]}>Wallet</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[
-                                styles.paymentOption,
-                                paymentMethod === 'ONLINE' && styles.paymentOptionActive,
-                            ]}
-                            onPress={() => setPaymentMethod('ONLINE')}
-                        >
-                            <Ionicons
-                                name="card"
-                                size={20}
-                                color={paymentMethod === 'ONLINE' ? theme.primary : theme.textMuted}
-                            />
-                            <Text style={[
-                                styles.paymentOptionText,
-                                paymentMethod === 'ONLINE' && styles.paymentOptionTextActive,
-                            ]}>Pay Online</Text>
-                        </TouchableOpacity>
-                    </View>
+                        {/* Payment Method Selector */}
+                        <Text style={styles.paymentMethodLabel}>PAYMENT METHOD</Text>
+                        <View style={styles.paymentMethods}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.paymentOption,
+                                    paymentMethod === 'WALLET' && styles.paymentOptionActive,
+                                ]}
+                                onPress={() => setPaymentMethod('WALLET')}
+                            >
+                                <Ionicons
+                                    name="wallet"
+                                    size={20}
+                                    color={paymentMethod === 'WALLET' ? theme.primary : theme.textMuted}
+                                />
+                                <Text style={[
+                                    styles.paymentOptionText,
+                                    paymentMethod === 'WALLET' && styles.paymentOptionTextActive,
+                                ]}>Wallet</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.paymentOption,
+                                    paymentMethod === 'ONLINE' && styles.paymentOptionActive,
+                                ]}
+                                onPress={() => setPaymentMethod('ONLINE')}
+                            >
+                                <Ionicons
+                                    name="card"
+                                    size={20}
+                                    color={paymentMethod === 'ONLINE' ? theme.primary : theme.textMuted}
+                                />
+                                <Text style={[
+                                    styles.paymentOptionText,
+                                    paymentMethod === 'ONLINE' && styles.paymentOptionTextActive,
+                                ]}>Pay Online</Text>
+                            </TouchableOpacity>
+                        </View>
 
-                    <TouchableOpacity
-                        style={[styles.placeOrderButton, isPlacing && styles.buttonDisabled]}
-                        onPress={handlePlaceOrder}
-                        disabled={isPlacing}
-                    >
-                        {isPlacing ? (
-                            <ActivityIndicator color="#FFF" />
-                        ) : (
-                            <>
-                                <Text style={styles.placeOrderText}>
-                                    {paymentMethod === 'ONLINE' ? 'Pay & Place Order' : 'Place Order'}
-                                </Text>
-                                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
-                            </>
-                        )}
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
+                        <TouchableOpacity
+                            style={[styles.placeOrderButton, isPlacing && styles.buttonDisabled]}
+                            onPress={handlePlaceOrder}
+                            disabled={isPlacing}
+                        >
+                            {isPlacing ? (
+                                <ActivityIndicator color="#FFF" />
+                            ) : (
+                                <React.Fragment>
+                                    <Text style={styles.placeOrderText}>
+                                        {paymentMethod === 'ONLINE' ? 'Pay & Place Order' : 'Place Order'}
+                                    </Text>
+                                    <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                                </React.Fragment>
+                            )}
+                        </TouchableOpacity>
+                    </React.Fragment>
+                )}</ScrollView>
 
             <OrderConfirmationModal
                 visible={showOrderModal}
@@ -373,15 +364,6 @@ const CartScreen: React.FC = () => {
                     onDismiss={() => setShowCheckout(false)}
                 />
             )}
-                        <TouchableOpacity style={styles.payButton} onPress={handlePlaceOrder}>
-                            <Text style={styles.payButtonText}>PROCEED TO PAY</Text>
-                            <View style={styles.payButtonPriceContainer}>
-                                <Text style={styles.payButtonPrice}>{formatCurrency(grandTotal)}</Text>
-                            </View>
-                        </TouchableOpacity>
-                    </>
-                )}
-            </ScrollView>
         </SafeAreaView>
     );
 };
@@ -629,6 +611,29 @@ const createStyles = (theme: any) => StyleSheet.create({
     },
     buttonDisabled: {
         opacity: 0.6,
+    },
+    placeOrderButton: {
+        width: '100%',
+        backgroundColor: theme.primary,
+        paddingVertical: 16,
+        borderRadius: 30,
+        shadowColor: theme.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 24,
+        marginBottom: 8,
+    },
+    placeOrderText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '800',
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
     payButtonText: {
         color: theme.background,
         fontSize: 16,

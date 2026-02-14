@@ -1,35 +1,16 @@
-import React, { useRef, useCallback } from 'react';
-import {
-    Modal,
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    Platform,
-    ActivityIndicator,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
-
-// Conditionally import WebView for native platforms
-let WebView: any = null;
-if (Platform.OS !== 'web') {
-    try {
-        WebView = require('react-native-webview').WebView;
-    } catch (e) {
-        console.warn('react-native-webview not available');
-    }
-}
+import React, { useRef, useState, useEffect } from 'react';
+import { Modal, StyleSheet, ActivityIndicator, View, Platform, Text, TouchableOpacity, Alert } from 'react-native';
+import { WebView } from 'react-native-webview';
 
 interface RazorpayCheckoutProps {
     visible: boolean;
     orderId: string;
     amount: number; // in paise
     keyId: string;
-    description?: string;
-    prefillEmail?: string;
-    prefillName?: string;
-    onSuccess: (data: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => void;
+    description: string;
+    prefillEmail: string;
+    prefillName: string;
+    onSuccess: (data: any) => void;
     onDismiss: () => void;
 }
 
@@ -38,265 +19,206 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
     orderId,
     amount,
     keyId,
-    description = 'Quick Byte Payment',
-    prefillEmail = '',
-    prefillName = '',
+    description,
+    prefillEmail,
+    prefillName,
     onSuccess,
     onDismiss,
 }) => {
-    const webViewRef = useRef<any>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const webViewRef = useRef<WebView>(null);
+
+    useEffect(() => {
+        if (visible) {
+            setIsLoading(true);
+        }
+    }, [visible]);
 
     const checkoutHTML = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            background: #1A1A1A;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            color: #fff;
-        }
-        .loading {
-            text-align: center;
-        }
-        .loading .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #3A3A3A;
-            border-top: 3px solid #FF6B35;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 16px;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .loading p { color: #9A9A9A; font-size: 14px; }
-        .error { text-align: center; padding: 24px; }
-        .error h3 { color: #FF5252; margin-bottom: 8px; }
-        .error p { color: #9A9A9A; font-size: 14px; }
-    </style>
-</head>
-<body>
-    <div class="loading" id="loading">
-        <div class="spinner"></div>
-        <p>Opening payment gateway...</p>
-    </div>
-    <div class="error" id="error" style="display:none;">
-        <h3>Payment Failed</h3>
-        <p id="errorMsg">Something went wrong</p>
-    </div>
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <style>
+                body { display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+                .loader { text-align: center; color: #666; }
+            </style>
+        </head>
+        <body>
+            <div id="loader" class="loader">Starting Payment...</div>
+            <script src="https://checkout.razorpay.com/v1/checkout.js" onerror="handleScriptError()"></script>
+            <script>
+                function handleScriptError() {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', code: 'SCRIPT_LOAD_ERROR', description: 'Failed to load Razorpay SDK' }));
+                }
 
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-    <script>
-        function startPayment() {
-            var options = {
-                key: '${keyId}',
-                amount: ${amount},
-                currency: 'INR',
-                name: 'Quick Byte',
-                description: '${description}',
-                order_id: '${orderId}',
-                prefill: {
-                    email: '${prefillEmail}',
-                    name: '${prefillName}'
-                },
-                theme: {
-                    color: '#FF6B35',
-                    backdrop_color: '#1A1A1A'
-                },
-                modal: {
-                    ondismiss: function() {
-                        window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({
-                            type: 'DISMISSED'
+                var options = {
+                    "key": "${keyId}",
+                    "amount": "${amount}", 
+                    "currency": "INR",
+                    "name": "UPS",
+                    "description": "${description}",
+                    "order_id": "${orderId}",
+                    "prefill": {
+                        "name": "${prefillName}",
+                        "email": "${prefillEmail}"
+                    },
+                    "theme": {
+                        "color": "#FF6B35"
+                    },
+                    "modal": {
+                        "ondismiss": function(){
+                            window.ReactNativeWebView.postMessage(JSON.stringify({type: 'DISMISS'}));
+                        }
+                    },
+                    "handler": function (response){
+                        window.ReactNativeWebView.postMessage(JSON.stringify({
+                            type: 'SUCCESS',
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_signature: response.razorpay_signature
                         }));
                     }
-                },
-                handler: function(response) {
-                    window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({
-                        type: 'SUCCESS',
-                        data: {
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature
-                        }
-                    }));
+                };
+
+                function startPayment() {
+                    try {
+                        var rzp1 = new Razorpay(options);
+                        rzp1.on('payment.failed', function (response){
+                            window.ReactNativeWebView.postMessage(JSON.stringify({
+                                type: 'ERROR',
+                                code: response.error.code,
+                                description: response.error.description
+                            }));
+                        });
+                        rzp1.open();
+                        document.getElementById('loader').style.display = 'none';
+                    } catch (e) {
+                         window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ERROR', code: 'INIT_ERROR', description: e.message }));
+                    }
                 }
-            };
 
-            try {
-                var rzp = new Razorpay(options);
-                rzp.on('payment.failed', function(response) {
-                    window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({
-                        type: 'FAILED',
-                        error: response.error.description || 'Payment failed'
-                    }));
-                });
-                rzp.open();
-            } catch(e) {
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
-                document.getElementById('errorMsg').textContent = e.message || 'Failed to open payment gateway';
-                window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify({
-                    type: 'ERROR',
-                    error: e.message
-                }));
-            }
-        }
+                // Wait for SDK to load
+                if (typeof Razorpay !== 'undefined') {
+                    startPayment();
+                } else {
+                    var checkInterval = setInterval(function() {
+                        if (typeof Razorpay !== 'undefined') {
+                            clearInterval(checkInterval);
+                            startPayment();
+                        }
+                    }, 100);
+                    // Timeout fallback
+                    setTimeout(function() {
+                        if (typeof Razorpay === 'undefined') {
+                            handleScriptError();
+                        }
+                    }, 10000);
+                }
+            </script>
+        </body>
+        </html>
+    `;
 
-        // Wait for Razorpay script to load
-        if (typeof Razorpay !== 'undefined') {
-            startPayment();
-        } else {
-            document.querySelector('script[src*="razorpay"]').addEventListener('load', startPayment);
-        }
-    </script>
-</body>
-</html>`;
-
-    const handleWebMessage = useCallback((event: any) => {
+    const handleMessage = (event: any) => {
         try {
             const data = JSON.parse(event.nativeEvent.data);
-            switch (data.type) {
-                case 'SUCCESS':
-                    onSuccess(data.data);
-                    break;
-                case 'DISMISSED':
-                case 'FAILED':
-                case 'ERROR':
-                    onDismiss();
-                    break;
+            console.log('[RazorpayCheckout] Message:', data);
+
+            if (data.type === 'SUCCESS') {
+                onSuccess(data);
+            } else if (data.type === 'DISMISS') {
+                onDismiss();
+            } else if (data.type === 'ERROR') {
+                console.error('[RazorpayCheckout] Error:', data);
+                Alert.alert('Payment Error', data.description || 'Something went wrong');
+                onDismiss();
             }
         } catch (e) {
-            console.warn('[RazorpayCheckout] Failed to parse message:', e);
+            console.error('[RazorpayCheckout] Parse error:', e);
         }
-    }, [onSuccess, onDismiss]);
+    };
 
-    // Web platform: use iframe
-    if (Platform.OS === 'web') {
-        if (!visible) return null;
-
-        return (
-            <Modal
-                visible={visible}
-                animationType="slide"
-                transparent
-                onRequestClose={onDismiss}
-            >
-                <View style={styles.overlay}>
-                    <View style={styles.webContainer}>
-                        <View style={styles.header}>
-                            <Text style={styles.headerTitle}>Payment</Text>
-                            <TouchableOpacity onPress={onDismiss} style={styles.closeBtn}>
-                                <Ionicons name="close" size={24} color={Colors.textPrimary} />
-                            </TouchableOpacity>
-                        </View>
-                        <iframe
-                            srcDoc={checkoutHTML}
-                            style={{
-                                flex: 1,
-                                width: '100%',
-                                border: 'none',
-                                backgroundColor: '#1A1A1A',
-                            } as any}
-                            title="Razorpay Checkout"
-                        />
-                    </View>
-                </View>
-            </Modal>
-        );
-    }
-
-    // Mobile platform: use WebView
-    if (!WebView || !visible) return null;
+    if (!visible) return null;
 
     return (
-        <Modal
-            visible={visible}
-            animationType="slide"
-            transparent
-            onRequestClose={onDismiss}
-        >
-            <View style={styles.overlay}>
-                <View style={styles.container}>
-                    <View style={styles.header}>
-                        <Text style={styles.headerTitle}>Payment</Text>
-                        <TouchableOpacity onPress={onDismiss} style={styles.closeBtn}>
-                            <Ionicons name="close" size={24} color={Colors.textPrimary} />
-                        </TouchableOpacity>
-                    </View>
-                    <WebView
-                        ref={webViewRef}
-                        source={{ html: checkoutHTML }}
-                        onMessage={handleWebMessage}
-                        javaScriptEnabled
-                        domStorageEnabled
-                        startInLoadingState
-                        renderLoading={() => (
-                            <View style={styles.loading}>
-                                <ActivityIndicator size="large" color={Colors.primary} />
-                            </View>
-                        )}
-                        style={styles.webView}
-                    />
+        <Modal visible={visible} animationType="slide" onRequestClose={onDismiss}>
+            <View style={styles.container}>
+                <View style={styles.header}>
+                    <Text style={styles.headerTitle}>Completing Payment</Text>
+                    <TouchableOpacity onPress={onDismiss} style={styles.closeButton}>
+                        <Text style={styles.closeText}>Close</Text>
+                    </TouchableOpacity>
                 </View>
+
+                <WebView
+                    ref={webViewRef}
+                    source={{ html: checkoutHTML, baseUrl: 'https://razorpay.com' }}
+                    onMessage={handleMessage}
+                    javaScriptEnabled={true}
+                    domStorageEnabled={true}
+                    startInLoadingState={true}
+                    renderLoading={() => (
+                        <View style={styles.loader}>
+                            <ActivityIndicator size="large" color="#FF6B35" />
+                            <Text style={styles.loadingText}>Loading Payment Gateway...</Text>
+                        </View>
+                    )}
+                    onLoadEnd={() => setIsLoading(false)}
+                    onError={(syntheticEvent) => {
+                        const { nativeEvent } = syntheticEvent;
+                        console.warn('WebView error: ', nativeEvent);
+                        Alert.alert('Network Error', 'Failed to load payment gateway. Please check your internet connection.');
+                    }}
+                    originWhitelist={['*']}
+                    style={{ flex: 1 }}
+                />
             </View>
         </Modal>
     );
 };
 
 const styles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        justifyContent: 'flex-end',
-    },
     container: {
-        height: '85%',
-        backgroundColor: Colors.background,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        overflow: 'hidden',
-    },
-    webContainer: {
-        height: '85%',
-        backgroundColor: Colors.background,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
+        flex: 1,
+        backgroundColor: '#fff',
     },
     header: {
+        height: 60,
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: Colors.border,
+        borderBottomColor: '#eee',
+        backgroundColor: '#fff',
+        paddingTop: Platform.OS === 'ios' ? 40 : 10,
     },
     headerTitle: {
-        fontSize: 18,
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    closeButton: {
+        padding: 8,
+    },
+    closeText: {
+        color: '#FF6B35',
         fontWeight: '600',
-        color: Colors.textPrimary,
     },
-    closeBtn: {
-        padding: 4,
-    },
-    webView: {
-        flex: 1,
-        backgroundColor: Colors.background,
-    },
-    loading: {
-        flex: 1,
+    loader: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 10,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: Colors.background,
+        backgroundColor: '#fff',
+    },
+    loadingText: {
+        marginTop: 10,
+        color: '#666',
     },
 });
 

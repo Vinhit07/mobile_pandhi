@@ -61,6 +61,12 @@ const MenuLayout: React.FC<MenuLayoutProps> = ({
     const [searchQuery, setSearchQuery] = useState('');
     const { addItem } = useCart();
 
+    // Update categories when data prop changes
+    React.useEffect(() => {
+        console.log('[MenuLayout] Data prop changed, updating categories. Count:', data.length);
+        setCategories(data);
+    }, [data]);
+
     const toggleCategory = (id: string) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setCategories((prev) =>

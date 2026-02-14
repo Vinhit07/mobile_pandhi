@@ -53,6 +53,7 @@ export const transformProduct = (product: APIProduct): MenuItem => ({
     price: product.price,
     image: product.imageUrl || 'https://via.placeholder.com/100',
     category: product.category.toLowerCase(),
+    outletId: product.outletId, // IMPORTANT: Preserve outletId for filtering
 });
 
 // Group products into categories
@@ -84,8 +85,11 @@ export const getProducts = async (): Promise<{
     products: APIProduct[];
     fromAPI: boolean;
 }> => {
+    console.log('[ProductService] ========== FETCHING PRODUCTS ==========');
+
     // Check if user is authenticated
     const authenticated = await isAuthenticated();
+    console.log('[ProductService] Authentication status:', authenticated ? 'AUTHENTICATED' : 'NOT AUTHENTICATED');
 
     if (!authenticated) {
         // Return mock data if not authenticated
@@ -98,7 +102,11 @@ export const getProducts = async (): Promise<{
     }
 
     // Fetch from API
+    console.log('[ProductService] Making API call to /customer/outlets/get-product/');
     const response = await api.get<GetProductsResponse>('/customer/outlets/get-product/');
+    console.log('[ProductService] API Response status:', response.status);
+    console.log('[ProductService] API Response error:', response.error || 'None');
+    console.log('[ProductService] API Response has data:', response.data ? 'YES' : 'NO');
 
     if (response.error || !response.data) {
         console.log('[ProductService] API error, falling back to mock data:', response.error);
@@ -110,6 +118,7 @@ export const getProducts = async (): Promise<{
     }
 
     const products = response.data.products;
+    console.log('[ProductService] ✅ GOT REAL DATA FROM API - Product count:', products.length);
     const categories = groupProductsIntoCategories(products);
 
     return {

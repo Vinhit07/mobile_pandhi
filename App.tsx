@@ -4,12 +4,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { View, StyleSheet, ActivityIndicator, Text } from 'react-native';
-
-import { HomeScreen, CartScreen, WalletScreen, ProfileScreen, PopupDetailScreen, SignInScreen } from './src/screens';
-import { CartProvider, ThemeProvider, useTheme, AuthProvider, useAuth } from './src/context';
-import { View, StyleSheet, Text, ActivityIndicator } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import {
   useFonts,
@@ -18,10 +14,9 @@ import {
   PlusJakartaSans_600SemiBold,
   PlusJakartaSans_700Bold,
 } from '@expo-google-fonts/plus-jakarta-sans';
-import { MaterialIcons } from '@expo/vector-icons';
 
-import { HomeScreen, CartScreen, WalletScreen, ProfileScreen, PopupDetailScreen, SnacksScreen, MainMealScreen, HotBeveragesScreen, PaymentScreen, OrderSuccessScreen, OrdersScreen } from './src/screens';
-import { CartProvider, ThemeProvider, useTheme, ToastProvider } from './src/context';
+import { HomeScreen, CartScreen, WalletScreen, ProfileScreen, PopupDetailScreen, CategoryDetailScreen, PaymentScreen, OrderSuccessScreen, OrdersScreen, SignInScreen } from './src/screens';
+import { CartProvider, ThemeProvider, useTheme, ToastProvider, AuthProvider, useAuth } from './src/context';
 import { BottomTabBar } from './src/components';
 
 // Keep splash screen visible while loading fonts
@@ -86,43 +81,25 @@ function AppNavigator() {
             component={PopupDetailScreen}
             options={{ animation: 'slide_from_right' }}
           />
+          <Stack.Screen
+            name="CategoryDetail"
+            component={CategoryDetailScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="Payment"
+            component={PaymentScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="OrderSuccess"
+            component={OrderSuccessScreen}
+            options={{ animation: 'fade' }}
+          />
         </Stack.Navigator>
       ) : (
         <AuthNavigator />
       )}
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="MainTabs" component={TabNavigator} />
-        <Stack.Screen
-          name="PopupDetail"
-          component={PopupDetailScreen}
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="Snacks"
-          component={SnacksScreen}
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="MainMeal"
-          component={MainMealScreen}
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="HotBeverages"
-          component={HotBeveragesScreen}
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="Payment"
-          component={PaymentScreen}
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="OrderSuccess"
-          component={OrderSuccessScreen}
-          options={{ animation: 'fade' }}
-        />
-      </Stack.Navigator>
     </>
   );
 }
@@ -158,14 +135,14 @@ export default function App() {
     <SafeAreaProvider onLayout={onLayoutRootView}>
       <ThemeProvider>
         <AuthProvider>
-        <ToastProvider>
-          <CartProvider>
-            <NavigationContainer>
-              <AppNavigator />
-            </NavigationContainer>
-          </CartProvider>
+          <ToastProvider>
+            <CartProvider>
+              <NavigationContainer>
+                <AppNavigator />
+              </NavigationContainer>
+            </CartProvider>
+          </ToastProvider>
         </AuthProvider>
-        </ToastProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
@@ -177,11 +154,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#351C15',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   loadingLogo: {
     width: 80,
