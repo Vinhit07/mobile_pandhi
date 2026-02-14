@@ -8,8 +8,6 @@ import {
     StatusBar,
     ActivityIndicator,
     Alert,
-    Modal,
-    TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +17,9 @@ import { formatCurrency, CURRENCY_SYMBOL } from '../utils/currency';
 import { useTheme, useAuth } from '../context';
 import { getWalletDetails, getRecentTransactions, WalletTransaction } from '../services/walletService';
 import { getRazorpayKey, createWalletRechargeOrder, verifyWalletRecharge } from '../services/paymentService';
-// NOTE: RazorpayCheckout will be imported dynamically when needed
+// Import Razorpay - get the default export
+const RazorpayModule = require('react-native-razorpay');
+const RazorpayCheckout = RazorpayModule.default || RazorpayModule;
 
 interface DisplayTransaction {
     id: string;
@@ -74,10 +74,6 @@ const WalletScreen: React.FC = () => {
     const [totalRecharged, setTotalRecharged] = useState(0);
     const [transactions, setTransactions] = useState<DisplayTransaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-
-    // Razorpay state
-    const [showAmountModal, setShowAmountModal] = useState(false);
-    const [customAmount, setCustomAmount] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
 
     const styles = createStyles(theme);
@@ -111,105 +107,115 @@ const WalletScreen: React.FC = () => {
         }
     };
 
-    const initiateRecharge = async (amount: number) => {
-        console.log('[WalletScreen] initiateRecharge called with amount:', amount);
+    const openRazorpay = async (amount: number) => {
+        console.log('[WalletScreen] openRazorpay called with amount:', amount);
 
         if (amount < 1) {
             Alert.alert('Invalid Amount', 'Minimum recharge amount is ₹1.');
             return;
         }
 
+        if (isProcessing) {
+            console.log('[WalletScreen] Already processing, ignoring click');
+            return;
+        }
+
         setIsProcessing(true);
+
         try {
-            // Get Razorpay key
+            // Step 1: Get Razorpay key
             console.log('[WalletScreen] Fetching Razorpay key...');
             const keyId = await getRazorpayKey();
             console.log('[WalletScreen] Got keyId:', keyId);
 
             if (!keyId) {
-                Alert.alert('Error', 'Payment gateway not configured.');
-                setIsProcessing(false);
-                return;
+                throw new Error('Payment gateway not configured');
             }
 
-            // Create recharge order
-            console.log('[WalletScreen] Creating recharge order for amount:', amount);
-            const result = await createWalletRechargeOrder(amount);
-            console.log('[WalletScreen] Order creation result:', result);
+            // Step 2: Create order
+            console.log('[WalletScreen] Creating order for amount:', amount);
+            const orderResult = await createWalletRechargeOrder(amount);
+            console.log('[WalletScreen] Order result:', orderResult);
 
-            if (!result.success || !result.orderId) {
-                Alert.alert('Error', result.error || 'Failed to create payment order.');
-                setIsProcessing(false);
-                return;
+            if (!orderResult.success || !orderResult.orderId) {
+                throw new Error(orderResult.error || 'Failed to create order');
             }
 
-            // Close amount modal
-            setShowAmountModal(false);
-
-            console.log('[WalletScreen] ✅ Opening Razorpay SDK');
-
-            // Import Razorpay
-            const RazorpayCheckout = require('react-native-razorpay').default;
+            // Step 3: Open Razorpay directly
+            console.log('[WalletScreen] Opening Razorpay with orderId:', orderResult.orderId);
 
             const options = {
-                description: `Wallet Recharge for ₹${amount}`,
+                description: `Wallet Recharge - ₹${amount}`,
                 currency: 'INR',
                 key: keyId,
-                amount: result.amount!, // in paise
-                name: 'UPS',
-                order_id: result.orderId,
+                amount: orderResult.amount, // Already in paise from backend
+                name: 'UPS Wallet',
+                order_id: orderResult.orderId,
                 prefill: {
                     email: user?.email || 'customer@ups.com',
-                    name: user?.name || 'Customer'
+                    name: user?.name || 'Customer',
                 },
-                theme: { color: '#FF6B35' }
+                theme: {
+                    color: '#FF6B35'
+                },
             };
 
-            RazorpayCheckout.open(options).then(async (data: any) => {
-                console.log('[WalletScreen] ✅ Payment successful!', data);
-                setIsProcessing(true);
-                try {
-                    const verifyResponse = await verifyWalletRecharge({
-                        razorpay_order_id: data.razorpay_order_id,
-                        razorpay_payment_id: data.razorpay_payment_id,
-                        razorpay_signature: data.razorpay_signature,
-                    });
-                    if (verifyResponse.success) {
-                        Alert.alert('Success', 'Wallet recharged successfully! ✅');
-                        fetchWalletData();
-                    } else {
-                        Alert.alert('Error', verifyResponse.error || 'Payment verification failed');
+            console.log('[WalletScreen] Razorpay options:', options);
+
+            // Check if Razorpay is available
+            if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function') {
+                console.error('[WalletScreen] RazorpayCheckout not valid:', RazorpayCheckout);
+                console.error('[WalletScreen] Type:', typeof RazorpayCheckout);
+                console.error('[WalletScreen] Has .open?', RazorpayCheckout?.open);
+                throw new Error('Razorpay SDK not initialized. Please restart the app.');
+            }
+
+            console.log('[WalletScreen] ✅ RazorpayCheckout is ready, opening...');
+
+            // Open Razorpay checkout
+            RazorpayCheckout.open(options)
+                .then(async (data: any) => {
+                    console.log('[WalletScreen] ✅ Payment successful!', data);
+
+                    // Verify payment
+                    try {
+                        const verifyResponse = await verifyWalletRecharge({
+                            razorpay_order_id: data.razorpay_order_id,
+                            razorpay_payment_id: data.razorpay_payment_id,
+                            razorpay_signature: data.razorpay_signature,
+                        });
+
+                        if (verifyResponse.success) {
+                            Alert.alert('Success! 🎉', `₹${amount} added to your wallet successfully!`);
+                            fetchWalletData(); // Refresh wallet data
+                        } else {
+                            Alert.alert('Verification Failed', verifyResponse.error || 'Please contact support');
+                        }
+                    } catch (verifyError) {
+                        console.error('[WalletScreen] Verification error:', verifyError);
+                        Alert.alert('Verification Error', 'Payment verification failed. Please contact support.');
+                    } finally {
+                        setIsProcessing(false);
                     }
-                } catch (error) {
-                    console.error('[WalletScreen] Verification error:', error);
-                    Alert.alert('Error', 'Payment verification failed');
-                } finally {
+                })
+                .catch((error: any) => {
+                    console.log('[WalletScreen] Payment error:', error);
                     setIsProcessing(false);
-                }
-            }).catch((error: any) => {
-                console.log('[WalletScreen] Payment cancelled/failed:', error);
-                if (error.code !== 0) {
-                    // 0 = cancelled by user
-                    Alert.alert('Payment Failed', 'Please try again.');
-                }
-                setIsProcessing(false);
-            });
-        } catch (error) {
-            console.error('[WalletScreen] Error in initiateRecharge:', error);
-            Alert.alert('Error', 'Something went wrong. Please try again.');
+
+                    // Check if user cancelled
+                    if (error.code === 0 || error.code === 2) {
+                        console.log('[WalletScreen] Payment cancelled by user');
+                        // Don't show alert for user cancellation
+                    } else {
+                        Alert.alert('Payment Failed', error.description || 'Please try again');
+                    }
+                });
+
+        } catch (error: any) {
+            console.error('[WalletScreen] Error in openRazorpay:', error);
             setIsProcessing(false);
+            Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
         }
-    };
-
-
-
-    const handleAddMoney = () => {
-        setCustomAmount('');
-        setShowAmountModal(true);
-    };
-
-    const handleQuickTopUp = (amount: number) => {
-        initiateRecharge(amount);
     };
 
     return (
@@ -258,20 +264,58 @@ const WalletScreen: React.FC = () => {
                     </View>
 
                     <Text style={styles.sectionTitle}>QUICK TOP-UP</Text>
-                    <TouchableOpacity style={styles.addMoneyButton} onPress={handleAddMoney}>
-                        <Ionicons name="add" size={20} color="#FFFFFF" />
-                        <Text style={styles.addMoneyText}>Add Money</Text>
+
+                    {/* Add Money with custom amount */}
+                    <TouchableOpacity
+                        style={[styles.addMoneyButton, isProcessing && styles.buttonDisabled]}
+                        onPress={() => {
+                            Alert.prompt(
+                                'Add Money',
+                                'Enter amount to add:',
+                                [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    {
+                                        text: 'Add',
+                                        onPress: (amount) => {
+                                            const numAmount = parseFloat(amount || '0');
+                                            if (numAmount > 0) {
+                                                openRazorpay(numAmount);
+                                            } else {
+                                                Alert.alert('Invalid Amount', 'Please enter a valid amount');
+                                            }
+                                        },
+                                    },
+                                ],
+                                'plain-text',
+                                '',
+                                'numeric'
+                            );
+                        }}
+                        disabled={isProcessing}
+                    >
+                        {isProcessing ? (
+                            <ActivityIndicator size="small" color="#541C0D" />
+                        ) : (
+                            <>
+                                <Ionicons name="add" size={20} color="#541C0D" />
+                                <Text style={styles.addMoneyText}>Add Money</Text>
+                            </>
+                        )}
                     </TouchableOpacity>
+
+                    {/* Quick amount buttons */}
                     <View style={styles.quickAmounts}>
                         <TouchableOpacity
-                            style={styles.quickAmountButton}
-                            onPress={() => handleQuickTopUp(500)}
+                            style={[styles.quickAmountButton, isProcessing && styles.buttonDisabled]}
+                            onPress={() => openRazorpay(500)}
+                            disabled={isProcessing}
                         >
                             <Text style={styles.quickAmountText}>+ {CURRENCY_SYMBOL}500</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={styles.quickAmountButton}
-                            onPress={() => handleQuickTopUp(1000)}
+                            style={[styles.quickAmountButton, isProcessing && styles.buttonDisabled]}
+                            onPress={() => openRazorpay(1000)}
+                            disabled={isProcessing}
                         >
                             <Text style={styles.quickAmountText}>+ {CURRENCY_SYMBOL}1000</Text>
                         </TouchableOpacity>
@@ -332,67 +376,13 @@ const WalletScreen: React.FC = () => {
                 </ScrollView>
             )}
 
-            {/* Amount Input Modal */}
-            <Modal
-                visible={showAmountModal}
-                transparent
-                animationType="slide"
-                onRequestClose={() => setShowAmountModal(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>Add Money to Wallet</Text>
-                        <View style={styles.amountInputContainer}>
-                            <Text style={styles.currencyPrefix}>{CURRENCY_SYMBOL}</Text>
-                            <TextInput
-                                style={styles.amountInput}
-                                value={customAmount}
-                                onChangeText={setCustomAmount}
-                                placeholder="Enter amount"
-                                placeholderTextColor={theme.textMuted}
-                                keyboardType="numeric"
-                                autoFocus
-                            />
-                        </View>
-                        <View style={styles.modalQuickAmounts}>
-                            {[100, 200, 500, 1000, 2000].map((amt) => (
-                                <TouchableOpacity
-                                    key={amt}
-                                    style={styles.modalQuickBtn}
-                                    onPress={() => setCustomAmount(String(amt))}
-                                >
-                                    <Text style={styles.modalQuickText}>{CURRENCY_SYMBOL}{amt}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity
-                                style={styles.modalCancelBtn}
-                                onPress={() => setShowAmountModal(false)}
-                            >
-                                <Text style={styles.modalCancelText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.modalPayBtn, isProcessing && styles.buttonDisabled]}
-                                onPress={() => initiateRecharge(parseFloat(customAmount) || 0)}
-                                disabled={isProcessing}
-                            >
-                                {isProcessing ? (
-                                    <ActivityIndicator color="#FFF" size="small" />
-                                ) : (
-                                    <Text style={styles.modalPayText}>Proceed to Pay</Text>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* Processing Overlay */}
+            {/* Simple processing overlay */}
             {isProcessing && (
                 <View style={styles.processingOverlay}>
-                    <ActivityIndicator size="large" color={theme.primary} />
-                    <Text style={styles.processingText}>Processing payment...</Text>
+                    <View style={styles.processingCard}>
+                        <ActivityIndicator size="large" color={theme.primary} />
+                        <Text style={styles.processingText}>Processing...</Text>
+                    </View>
                 </View>
             )}
         </SafeAreaView>
@@ -473,7 +463,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     creditsText: {
         fontSize: Typography.sizes.xs,
         fontWeight: Typography.weights.semibold,
-        color: '#541C0D', // Updated to brown
+        color: '#541C0D',
     },
     balanceAmount: {
         fontSize: 36,
@@ -539,6 +529,9 @@ const createStyles = (theme: any) => StyleSheet.create({
         fontSize: Typography.sizes.md,
         fontWeight: Typography.weights.medium,
         color: theme.textPrimary,
+    },
+    buttonDisabled: {
+        opacity: 0.6,
     },
     transactionsTitle: {
         fontSize: Typography.sizes.lg,
@@ -607,115 +600,26 @@ const createStyles = (theme: any) => StyleSheet.create({
     creditAmount: {
         color: '#22C55E',
     },
-    transactionMeta: {
-        alignItems: 'flex-end',
-    },
     transactionDate: {
         fontSize: Typography.sizes.sm,
         color: theme.textSecondary,
     },
-    transactionTime: {
-        fontSize: Typography.sizes.xs,
-        color: theme.textMuted,
-    },
-    // Modal styles
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        justifyContent: 'flex-end',
-    },
-    modalContent: {
-        backgroundColor: theme.cardBackground,
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        padding: 24,
-        paddingBottom: 40,
-    },
-    modalTitle: {
-        fontSize: Typography.sizes.xl,
-        fontWeight: Typography.weights.bold,
-        color: theme.textPrimary,
-        marginBottom: 20,
-        textAlign: 'center',
-    },
-    amountInputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: theme.background,
-        borderRadius: 16,
-        paddingHorizontal: 20,
-        marginBottom: 16,
-    },
-    currencyPrefix: {
-        fontSize: 28,
-        fontWeight: Typography.weights.bold,
-        color: theme.primary,
-        marginRight: 8,
-    },
-    amountInput: {
-        flex: 1,
-        height: 60,
-        fontSize: 28,
-        fontWeight: '700' as any,
-        color: theme.textPrimary,
-    },
-    modalQuickAmounts: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginBottom: 24,
-    },
-    modalQuickBtn: {
-        backgroundColor: theme.background,
-        borderRadius: 10,
-        paddingVertical: 10,
-        paddingHorizontal: 16,
-    },
-    modalQuickText: {
-        fontSize: Typography.sizes.md,
-        fontWeight: Typography.weights.medium,
-        color: theme.textPrimary,
-    },
-    modalActions: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    modalCancelBtn: {
-        flex: 1,
-        borderRadius: 16,
-        paddingVertical: 16,
-        backgroundColor: theme.background,
-        alignItems: 'center',
-    },
-    modalCancelText: {
-        fontSize: Typography.sizes.md,
-        fontWeight: Typography.weights.semibold,
-        color: theme.textSecondary,
-    },
-    modalPayBtn: {
-        flex: 2,
-        borderRadius: 16,
-        paddingVertical: 16,
-        backgroundColor: theme.primary,
-        alignItems: 'center',
-    },
-    buttonDisabled: {
-        opacity: 0.6,
-    },
-    modalPayText: {
-        fontSize: Typography.sizes.md,
-        fontWeight: Typography.weights.semibold,
-        color: '#FFFFFF',
-    },
     processingOverlay: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
         justifyContent: 'center',
+        alignItems: 'center',
+    },
+    processingCard: {
+        backgroundColor: theme.cardBackground,
+        borderRadius: 20,
+        padding: 32,
         alignItems: 'center',
         gap: 16,
     },
     processingText: {
         fontSize: Typography.sizes.md,
+        fontWeight: Typography.weights.semibold,
         color: theme.textPrimary,
     },
 });
