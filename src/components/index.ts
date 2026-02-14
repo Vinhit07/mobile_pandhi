@@ -6,3 +6,6 @@ export { default as MenuCategory } from './MenuCategory';
 export { default as CartItemCard } from './CartItemCard';
 export { default as OrderConfirmationModal } from './OrderConfirmationModal';
 export { default as PopupCard } from './PopupCard';
+export { default as BottomTabBar } from './BottomTabBar';
+export { default as CategoryCard } from './CategoryCard';
+export { default as ViewCartPopup } from './ViewCartPopup';

@@ -14,20 +14,32 @@ import { Header, SearchBar, FavoriteCard, MenuCategory, PopupCard } from '../com
 import { menuCategories as mockMenuCategories, favoriteItems, popupItems, MenuItem as MenuItemType, MenuCategory as MenuCategoryType } from '../data/menuData';
 import { useCart, useTheme, useAuth } from '../context';
 import { getProducts } from '../services/productService';
+import { Header, SearchBar, FavoriteCard, PopupCard, CategoryCard } from '../components';
+import { menuCategories, favoriteItems, popupItems, MenuItem as MenuItemType } from '../data/menuData';
+import { useCart, useTheme } from '../context';
 
 // Helper function to get time-based greeting
 const getGreeting = (): string => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'GOOD MORNING';
-    if (hour < 17) return 'GOOD AFTERNOON';
-    return 'GOOD EVENING';
+    if (hour < 12) return 'Good morning,';
+    if (hour < 17) return 'Good afternoon,';
+    return 'Good evening,';
 };
 
-const HomeScreen: React.FC = () => {
+// Category data for horizontal grid
+// Categories data matching HTML reference
+
+const HomeScreen: React.FC = ({ navigation }: any) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [menuCategories, setMenuCategories] = useState<MenuCategoryType[]>(mockMenuCategories);
     const [isLoading, setIsLoading] = useState(true);
     const [isFromAPI, setIsFromAPI] = useState(false);
+    // Categories data matching HTML reference
+    const [categories] = useState([
+        { id: '1', name: 'Main Meal', icon: 'restaurant' },
+        { id: '2', name: 'Snacks', icon: 'cookie' },
+        { id: '3', name: 'Hot Brews', icon: 'coffee' },
+    ]);
     const { addItem } = useCart();
     const { theme } = useTheme();
     const { user } = useAuth();
@@ -56,10 +68,6 @@ const HomeScreen: React.FC = () => {
         addItem(item);
     };
 
-    const handleAddItem = (item: MenuItemType) => {
-        addItem(item);
-    };
-
     const styles = createStyles(theme);
 
     return (
@@ -77,21 +85,21 @@ const HomeScreen: React.FC = () => {
                 <SearchBar
                     value={searchQuery}
                     onChangeText={setSearchQuery}
-                    placeholder="What are you craving?"
+                    placeholder="Search for your favorite meal..."
                 />
 
                 {/* Favorites Section */}
                 <View style={styles.section}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>Your Favorites</Text>
-                        <Text style={styles.seeAll}>See all</Text>
+                        <Text style={styles.viewAll}>VIEW ALL</Text>
                     </View>
                     <FlatList
                         horizontal
                         data={favoriteItems}
                         keyExtractor={(item) => item.id}
                         showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.favoritesContainer}
+                        contentContainerStyle={styles.horizontalList}
                         renderItem={({ item }) => (
                             <FavoriteCard
                                 name={item.name}
@@ -113,13 +121,15 @@ const HomeScreen: React.FC = () => {
 
                 {/* Pop ups Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Pop ups</Text>
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Pop up counters</Text>
+                    </View>
                     <FlatList
                         horizontal
                         data={popupItems}
                         keyExtractor={(item) => item.id}
                         showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.popupsContainer}
+                        contentContainerStyle={styles.horizontalList}
                         renderItem={({ item }) => (
                             <PopupCard
                                 id={item.id}
@@ -132,21 +142,35 @@ const HomeScreen: React.FC = () => {
                     />
                 </View>
 
-                {/* Explore Menu Section */}
+                {/* Categories Section */}
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Explore Menu</Text>
-                    <View style={styles.categoriesContainer}>
-                        {menuCategories.map((category, index) => (
-                            <MenuCategory
-                                key={category.id}
-                                name={category.name}
-                                icon={category.icon}
-                                items={category.items}
-                                initiallyExpanded={index === 0}
-                                onAddItem={handleAddItem}
-                            />
-                        ))}
+                    <View style={styles.sectionHeader}>
+                        <Text style={styles.sectionTitle}>Categories</Text>
                     </View>
+                    <FlatList
+                        horizontal
+                        data={categories}
+                        keyExtractor={(item) => item.id}
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.horizontalList}
+                        renderItem={({ item }) => (
+                            <CategoryCard
+                                name={item.name}
+                                icon={item.icon}
+                                onPress={() => {
+                                    if (item.name === 'Snacks') {
+                                        navigation.navigate('Snacks');
+                                    } else if (item.name === 'Main Meal') {
+                                        navigation.navigate('MainMeal');
+                                    } else if (item.name === 'Hot Brews') {
+                                        navigation.navigate('HotBeverages');
+                                    } else {
+                                        console.log('Category pressed:', item.name);
+                                    }
+                                }}
+                            />
+                        )}
+                    />
                 </View>
             </ScrollView>
         </SafeAreaView>
@@ -162,7 +186,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: 100,
+        paddingBottom: 120,
     },
     section: {
         marginBottom: 24,
@@ -171,29 +195,24 @@ const createStyles = (theme: any) => StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
+        paddingHorizontal: 24,
         marginBottom: 16,
     },
     sectionTitle: {
-        fontSize: Typography.sizes.xl,
-        fontWeight: Typography.weights.bold,
+        fontSize: 18,
+        fontWeight: '700',
         color: theme.textPrimary,
-        paddingHorizontal: 20,
-        marginBottom: 16,
+        fontFamily: 'PlusJakartaSans_700Bold',
     },
-    seeAll: {
-        fontSize: Typography.sizes.sm,
+    viewAll: {
+        fontSize: 12,
+        fontWeight: '700',
         color: theme.primary,
-        fontWeight: Typography.weights.medium,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        letterSpacing: 0.5,
     },
-    favoritesContainer: {
-        paddingHorizontal: 20,
-    },
-    popupsContainer: {
-        paddingHorizontal: 20,
-    },
-    categoriesContainer: {
-        paddingHorizontal: 20,
+    horizontalList: {
+        paddingHorizontal: 24,
     },
 });
 

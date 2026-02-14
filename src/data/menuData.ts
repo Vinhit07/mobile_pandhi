@@ -197,13 +197,7 @@ export const popupItems: PopupItem[] = [
         image: 'https://images.unsplash.com/photo-1509722747041-616f39b57569?w=400&h=200&fit=crop',
         isLive: true,
     },
-    {
-        id: 'popup2',
-        title: 'Breakfast Special',
-        subtitle: 'Start your day right',
-        image: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=400&h=200&fit=crop',
-        isLive: false,
-    },
+
     {
         id: 'popup3',
         title: 'Coffee Hour',

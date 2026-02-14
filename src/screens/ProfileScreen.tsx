@@ -269,7 +269,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 12,
-        backgroundColor: 'rgba(255, 107, 53, 0.15)',
+        // backgroundColor: 'rgba(255, 107, 53, 0.15)', // Removed background as requested
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 14,

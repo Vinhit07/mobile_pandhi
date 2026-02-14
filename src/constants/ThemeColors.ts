@@ -1,73 +1,88 @@
-// Color themes for the Quick Byte app - Light and Dark themes
+// Color themes for the Cafeteria app - Brown/Gold theme
+// Based on new HTML design reference
 
 export const DarkTheme = {
     // Backgrounds
-    background: '#1A1A1A',
-    cardBackground: '#2A2A2A',
-    categoryBackground: '#3A3A3A',
-    inputBackground: '#2A2A2A',
+    background: '#351C15',       // Deep Brown
+    cardBackground: '#4A2820',   // Surface Brown
+    categoryBackground: '#351C15', // Same as background for inner elements
+    inputBackground: '#4A2820',  // Surface Brown
 
     // Accent colors
-    primary: '#FF6B35',
-    primaryLight: '#FF8B5E',
-    priceOrange: '#FF9500',
+    primary: '#f9d006',          // Gold Yellow
+    primaryLight: '#FADC4E',     // Lighter gold
+    priceOrange: '#f9d006',      // Same as primary
 
     // Text colors
-    textPrimary: '#FFFFFF',
-    textSecondary: '#9A9A9A',
-    textMuted: '#6A6A6A',
+    textPrimary: '#F9F4E0',      // Light Beige
+    textSecondary: '#C2B2A0',    // Muted Beige
+    textMuted: '#C2B2A0',        // Muted Beige
+
+    // Special text
+    realWhite: '#FFFFFF',        // Pure white for overlays/images
+    brownDark: '#351C15',        // For text on primary buttons
 
     // Status colors
-    success: '#4CAF50',
-    error: '#FF5252',
+    success: '#22C55E',
+    error: '#EF4444',
 
     // Border & dividers
-    border: '#3A3A3A',
-    divider: '#2A2A2A',
+    border: '#5D3A32',           // Subtle brown border
+    divider: '#5D3A32',
 
     // Tab bar
-    tabBarBackground: '#1A1A1A',
-    tabBarActive: '#FF6B35',
-    tabBarInactive: '#6A6A6A',
+    tabBarBackground: '#4A2820',
+    tabBarActive: '#f9d006',
+    tabBarInactive: '#C2B2A0',
 
     // Additional
     statusBarStyle: 'light-content' as 'light-content' | 'dark-content',
     isDark: true,
+
+    // Shadows
+    shadowColor: 'rgba(0,0,0,0.3)',
 };
 
 export const LightTheme = {
     // Backgrounds
-    background: '#F5F5F5',
+    background: '#F9F4E0',       // Light Beige
     cardBackground: '#FFFFFF',
-    categoryBackground: '#F0F0F0',
+    categoryBackground: '#F5EDD8',
     inputBackground: '#FFFFFF',
 
     // Accent colors
-    primary: '#FF6B35',
-    primaryLight: '#FF8B5E',
-    priceOrange: '#FF9500',
+    primary: '#f9d006',          // Gold Yellow
+    primaryLight: '#FADC4E',
+    priceOrange: '#f9d006',
 
     // Text colors
-    textPrimary: '#1A1A1A',
-    textSecondary: '#666666',
-    textMuted: '#999999',
+    textPrimary: '#351C15',      // Deep Brown
+    textSecondary: '#5D3A32',
+    textMuted: '#8B7355',
+
+    // Special text
+    realWhite: '#FFFFFF',
+    brownDark: '#351C15',
 
     // Status colors
-    success: '#4CAF50',
-    error: '#FF5252',
+    success: '#22C55E',
+    error: '#EF4444',
 
     // Border & dividers
-    border: '#E0E0E0',
-    divider: '#EEEEEE',
+    border: '#E8DCC8',
+    divider: '#F0E6D2',
 
     // Tab bar
     tabBarBackground: '#FFFFFF',
-    tabBarActive: '#FF6B35',
-    tabBarInactive: '#999999',
+    tabBarActive: '#f9d006',
+    tabBarInactive: '#8B7355',
 
     // Additional
     statusBarStyle: 'dark-content' as 'light-content' | 'dark-content',
     isDark: false,
+
+    // Shadows
+    shadowColor: 'rgba(0,0,0,0.1)',
 };
 
 export type ThemeColors = typeof DarkTheme & typeof LightTheme;
