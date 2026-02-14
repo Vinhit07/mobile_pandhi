@@ -12,14 +12,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import RazorpayCheckout from 'react-native-razorpay';
 import Typography from '../constants/Typography';
 import { formatCurrency, CURRENCY_SYMBOL } from '../utils/currency';
 import { useTheme, useAuth } from '../context';
 import { getWalletDetails, getRecentTransactions, WalletTransaction } from '../services/walletService';
 import { getRazorpayKey, createWalletRechargeOrder, verifyWalletRecharge } from '../services/paymentService';
-// Import Razorpay - get the default export
-const RazorpayModule = require('react-native-razorpay');
-const RazorpayCheckout = RazorpayModule.default || RazorpayModule;
 
 interface DisplayTransaction {
     id: string;
@@ -74,7 +72,8 @@ const WalletScreen: React.FC = () => {
     const [totalRecharged, setTotalRecharged] = useState(0);
     const [transactions, setTransactions] = useState<DisplayTransaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [isProcessing, setIsProcessing] = useState(false);
+    const [isRecharging, setIsRecharging] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(false);
 
     const styles = createStyles(theme);
 
@@ -107,20 +106,13 @@ const WalletScreen: React.FC = () => {
         }
     };
 
-    const openRazorpay = async (amount: number) => {
-        console.log('[WalletScreen] openRazorpay called with amount:', amount);
+    const handleRecharge = useCallback(async (amount: number) => {
+        console.log('[WalletScreen] handleRecharge called with amount:', amount);
 
-        if (amount < 1) {
-            Alert.alert('Invalid Amount', 'Minimum recharge amount is ₹1.');
+        if (isNaN(amount) || amount <= 0) {
+            Alert.alert('Invalid Amount', 'Please enter a valid amount greater than 0.');
             return;
         }
-
-        if (isProcessing) {
-            console.log('[WalletScreen] Already processing, ignoring click');
-            return;
-        }
-
-        setIsProcessing(true);
 
         try {
             // Step 1: Get Razorpay key
@@ -132,91 +124,85 @@ const WalletScreen: React.FC = () => {
                 throw new Error('Payment gateway not configured');
             }
 
-            // Step 2: Create order
+            // Step 2: Create order from backend
             console.log('[WalletScreen] Creating order for amount:', amount);
-            const orderResult = await createWalletRechargeOrder(amount);
-            console.log('[WalletScreen] Order result:', orderResult);
+            const orderResponse = await createWalletRechargeOrder(amount);
+            console.log('[WalletScreen] Order response:', orderResponse);
 
-            if (!orderResult.success || !orderResult.orderId) {
-                throw new Error(orderResult.error || 'Failed to create order');
+            if (!orderResponse.success || !orderResponse.orderId) {
+                throw new Error(orderResponse.error || 'Failed to create payment order.');
             }
 
-            // Step 3: Open Razorpay directly
-            console.log('[WalletScreen] Opening Razorpay with orderId:', orderResult.orderId);
+            const { orderId, amount: payableAmountRaw } = orderResponse;
 
+            // Step 3: Prepare Razorpay options (EXACT same format as working app)
             const options = {
                 description: `Wallet Recharge - ₹${amount}`,
                 currency: 'INR',
                 key: keyId,
-                amount: orderResult.amount, // Already in paise from backend
+                amount: payableAmountRaw, // Amount in paise
                 name: 'UPS Wallet',
-                order_id: orderResult.orderId,
+                order_id: orderId,
                 prefill: {
                     email: user?.email || 'customer@ups.com',
-                    name: user?.name || 'Customer',
+                    name: user?.name || 'Customer'
                 },
-                theme: {
-                    color: '#FF6B35'
-                },
+                theme: { color: '#FF6B35' }
             };
 
-            console.log('[WalletScreen] Razorpay options:', options);
+            console.log('[WalletScreen] Opening Razorpay with options:', options);
+            console.log('[WalletScreen] About to call RazorpayCheckout.open()...');
 
-            // Check if Razorpay is available
-            if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function') {
-                console.error('[WalletScreen] RazorpayCheckout not valid:', RazorpayCheckout);
-                console.error('[WalletScreen] Type:', typeof RazorpayCheckout);
-                console.error('[WalletScreen] Has .open?', RazorpayCheckout?.open);
-                throw new Error('Razorpay SDK not initialized. Please restart the app.');
-            }
+            // Step 4: Open Razorpay (EXACT same way as working app)
+            // DON'T set isRecharging here - let Razorpay open first!
+            RazorpayCheckout.open(options).then(async (data) => {
+                console.log('[WalletScreen] ✅ Payment successful!', data);
 
-            console.log('[WalletScreen] ✅ RazorpayCheckout is ready, opening...');
+                // NOW set verifying state
+                setIsVerifying(true);
 
-            // Open Razorpay checkout
-            RazorpayCheckout.open(options)
-                .then(async (data: any) => {
-                    console.log('[WalletScreen] ✅ Payment successful!', data);
+                try {
+                    // Step 5: Verify payment
+                    const verificationData = {
+                        razorpay_order_id: data.razorpay_order_id,
+                        razorpay_payment_id: data.razorpay_payment_id,
+                        razorpay_signature: data.razorpay_signature,
+                    };
 
-                    // Verify payment
-                    try {
-                        const verifyResponse = await verifyWalletRecharge({
-                            razorpay_order_id: data.razorpay_order_id,
-                            razorpay_payment_id: data.razorpay_payment_id,
-                            razorpay_signature: data.razorpay_signature,
-                        });
+                    const verifyResponse = await verifyWalletRecharge(verificationData);
 
-                        if (verifyResponse.success) {
-                            Alert.alert('Success! 🎉', `₹${amount} added to your wallet successfully!`);
-                            fetchWalletData(); // Refresh wallet data
-                        } else {
-                            Alert.alert('Verification Failed', verifyResponse.error || 'Please contact support');
-                        }
-                    } catch (verifyError) {
-                        console.error('[WalletScreen] Verification error:', verifyError);
-                        Alert.alert('Verification Error', 'Payment verification failed. Please contact support.');
-                    } finally {
-                        setIsProcessing(false);
-                    }
-                })
-                .catch((error: any) => {
-                    console.log('[WalletScreen] Payment error:', error);
-                    setIsProcessing(false);
-
-                    // Check if user cancelled
-                    if (error.code === 0 || error.code === 2) {
-                        console.log('[WalletScreen] Payment cancelled by user');
-                        // Don't show alert for user cancellation
+                    if (verifyResponse.success) {
+                        Alert.alert('Success! 🎉', `₹${amount} added to your wallet successfully!`);
+                        // Refresh wallet data
+                        await fetchWalletData();
                     } else {
-                        Alert.alert('Payment Failed', error.description || 'Please try again');
+                        throw new Error(verifyResponse.error || 'Payment verification failed. Please contact support.');
                     }
-                });
+                } catch (verificationError) {
+                    console.error('[WalletScreen] Verification Error:', verificationError);
+                    const message = verificationError instanceof Error ? verificationError.message : 'An unknown error occurred.';
+                    Alert.alert('Verification Failed', message);
+                } finally {
+                    setIsVerifying(false);
+                }
+            }).catch((error) => {
+                // Payment cancelled or failed
+                console.log(`[WalletScreen] Razorpay Error: ${error.code} | ${error.description}`);
 
-        } catch (error: any) {
-            console.error('[WalletScreen] Error in openRazorpay:', error);
-            setIsProcessing(false);
-            Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
+                // Don't show alert if user cancelled (code 0 or 2)
+                if (error.code !== 0 && error.code !== 2) {
+                    Alert.alert('Payment Failed', 'The payment was not completed. Please try again.');
+                }
+            });
+
+            console.log('[WalletScreen] RazorpayCheckout.open() called successfully');
+
+        } catch (apiError) {
+            console.error('[WalletScreen] Recharge initiation error:', apiError);
+            const message = apiError instanceof Error ? apiError.message : 'Could not initiate the recharge process.';
+            Alert.alert('Error', message);
         }
-    };
+    }, [user?.email, user?.name, fetchWalletData]);
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -267,7 +253,7 @@ const WalletScreen: React.FC = () => {
 
                     {/* Add Money with custom amount */}
                     <TouchableOpacity
-                        style={[styles.addMoneyButton, isProcessing && styles.buttonDisabled]}
+                        style={styles.addMoneyButton}
                         onPress={() => {
                             Alert.prompt(
                                 'Add Money',
@@ -279,7 +265,7 @@ const WalletScreen: React.FC = () => {
                                         onPress: (amount) => {
                                             const numAmount = parseFloat(amount || '0');
                                             if (numAmount > 0) {
-                                                openRazorpay(numAmount);
+                                                handleRecharge(numAmount);
                                             } else {
                                                 Alert.alert('Invalid Amount', 'Please enter a valid amount');
                                             }
@@ -291,31 +277,22 @@ const WalletScreen: React.FC = () => {
                                 'numeric'
                             );
                         }}
-                        disabled={isProcessing}
                     >
-                        {isProcessing ? (
-                            <ActivityIndicator size="small" color="#541C0D" />
-                        ) : (
-                            <>
-                                <Ionicons name="add" size={20} color="#541C0D" />
-                                <Text style={styles.addMoneyText}>Add Money</Text>
-                            </>
-                        )}
+                        <Ionicons name="add" size={20} color="#541C0D" />
+                        <Text style={styles.addMoneyText}>Add Money</Text>
                     </TouchableOpacity>
 
                     {/* Quick amount buttons */}
                     <View style={styles.quickAmounts}>
                         <TouchableOpacity
-                            style={[styles.quickAmountButton, isProcessing && styles.buttonDisabled]}
-                            onPress={() => openRazorpay(500)}
-                            disabled={isProcessing}
+                            style={styles.quickAmountButton}
+                            onPress={() => handleRecharge(500)}
                         >
                             <Text style={styles.quickAmountText}>+ {CURRENCY_SYMBOL}500</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
-                            style={[styles.quickAmountButton, isProcessing && styles.buttonDisabled]}
-                            onPress={() => openRazorpay(1000)}
-                            disabled={isProcessing}
+                            style={styles.quickAmountButton}
+                            onPress={() => handleRecharge(1000)}
                         >
                             <Text style={styles.quickAmountText}>+ {CURRENCY_SYMBOL}1000</Text>
                         </TouchableOpacity>
@@ -376,12 +353,12 @@ const WalletScreen: React.FC = () => {
                 </ScrollView>
             )}
 
-            {/* Simple processing overlay */}
-            {isProcessing && (
+            {/* Verification overlay - only shows AFTER payment is complete */}
+            {isVerifying && (
                 <View style={styles.processingOverlay}>
                     <View style={styles.processingCard}>
                         <ActivityIndicator size="large" color={theme.primary} />
-                        <Text style={styles.processingText}>Processing...</Text>
+                        <Text style={styles.processingText}>Verifying payment...</Text>
                     </View>
                 </View>
             )}

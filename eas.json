@@ -11,15 +11,29 @@
       },
       "ios": {
         "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_RAZORPAY_KEY": "rzp_test_CqJOLIOhHoCry6"
       }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_RAZORPAY_KEY": "rzp_test_CqJOLIOhHoCry6"
       }
     },
-    "production": {}
+    "production": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_RAZORPAY_KEY": "rzp_test_CqJOLIOhHoCry6",
+        "NODE_ENV": "production"
+      }
+    }
   },
   "submit": {
     "production": {}
