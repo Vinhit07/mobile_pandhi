@@ -27,6 +27,7 @@ const SignInScreen: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSubmit = async () => {
+        console.log('[SignIn] handleSubmit called');
         if (!email.trim() || !password.trim()) {
             Alert.alert('Missing Fields', 'Please enter email and password.');
             return;
@@ -40,10 +41,17 @@ const SignInScreen: React.FC = () => {
         setIsLoading(true);
         let result;
 
-        if (isSignUp) {
-            result = await register(name.trim(), email.trim().toLowerCase(), password);
-        } else {
-            result = await login(email.trim().toLowerCase(), password);
+        try {
+            console.log('[SignIn] Attempting', isSignUp ? 'register' : 'login', 'with email:', email.trim().toLowerCase());
+            if (isSignUp) {
+                result = await register(name.trim(), email.trim().toLowerCase(), password);
+            } else {
+                result = await login(email.trim().toLowerCase(), password);
+            }
+            console.log('[SignIn] Result:', JSON.stringify(result));
+        } catch (err) {
+            console.error('[SignIn] Unexpected error:', err);
+            result = { success: false, error: 'Unexpected error occurred' };
         }
 
         setIsLoading(false);

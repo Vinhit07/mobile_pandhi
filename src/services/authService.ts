@@ -114,17 +114,25 @@ export const checkAuth = async (): Promise<{
     authenticated: boolean;
     user?: AuthUser;
 }> => {
+    console.log('[AuthService] checkAuth called');
     const token = await getAuthToken();
+    console.log('[AuthService] Token exists:', token ? 'YES' : 'NO');
+
     if (!token) {
+        console.log('[AuthService] No token found, returning unauthenticated');
         return { authenticated: false };
     }
 
     try {
+        console.log('[AuthService] Verifying token with /auth/me');
         const response = await fetch(`${API_BASE_URL}/auth/me`, {
             headers: { Authorization: `Bearer ${token}` },
         });
 
+        console.log('[AuthService] /auth/me response status:', response.status);
+
         if (!response.ok) {
+            console.log('[AuthService] Token invalid, clearing and returning unauthenticated');
             await clearAuthToken();
             return { authenticated: false };
         }
@@ -132,6 +140,7 @@ export const checkAuth = async (): Promise<{
         const data = await response.json();
         const userData = data.user || data.data?.user || data;
 
+        console.log('[AuthService] Token valid, user authenticated:', userData.email);
         return {
             authenticated: true,
             user: {
@@ -142,6 +151,9 @@ export const checkAuth = async (): Promise<{
             },
         };
     } catch (error) {
+        console.log('[AuthService] checkAuth error:', error);
+        console.log('[AuthService] Clearing token and returning unauthenticated');
+        await clearAuthToken();
         return { authenticated: false };
     }
 };

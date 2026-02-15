@@ -1,14 +1,20 @@
 // API Service Layer - Base configuration and utilities
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
 // ============================================================
 // CONFIGURATION
 // ============================================================
 
-// Base URL for the backend API
-// Use localhost for PC/emulator testing
-// Use your computer's local IP (e.g., 192.168.29.163) for physical phone testing
-export const API_BASE_URL = 'http://192.168.29.92:5500/api';
+// Base URL for the backend API - automatically switches based on platform
+// - Web browser: uses localhost (avoids Chrome's Private Network Access block)
+// - Mobile device: uses LAN IP so phone can reach your computer
+const TUNNEL_URL = 'https://quick-bikes-jog.loca.lt'; // localtunnel for mobile testing
+const PORT = '5500';
+
+export const API_BASE_URL = Platform.OS === 'web'
+    ? `http://localhost:${PORT}/api`
+    : `${TUNNEL_URL}/api`;
 
 // Storage key for auth token
 const TOKEN_KEY = 'auth_token';

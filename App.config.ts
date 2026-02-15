@@ -50,11 +50,7 @@ export default {
     ],
     extra: {
       // Add Razorpay key here
-      razorpayKey: process.env.EXPO_PUBLIC_RAZORPAY_KEY || "rzp_test_CqJOLIOhHoCry6",
-      eas: {
-        "projectId": "5e5294e5-b880-4ada-9b99-38309ca326e1"
-      }
-    },
-    owner: "pavan_2503"
+      razorpayKey: process.env.EXPO_PUBLIC_RAZORPAY_KEY || "rzp_test_CqJOLIOhHoCry6"
+    }
   }
 }

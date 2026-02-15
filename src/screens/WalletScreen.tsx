@@ -8,16 +8,18 @@ import {
     StatusBar,
     ActivityIndicator,
     Alert,
+    Modal,
+    TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import RazorpayCheckout from 'react-native-razorpay';
 import Typography from '../constants/Typography';
 import { formatCurrency, CURRENCY_SYMBOL } from '../utils/currency';
 import { useTheme, useAuth } from '../context';
 import { getWalletDetails, getRecentTransactions, WalletTransaction } from '../services/walletService';
 import { getRazorpayKey, createWalletRechargeOrder, verifyWalletRecharge } from '../services/paymentService';
+import RazorpayCheckout from '../components/RazorpayCheckout';
 
 interface DisplayTransaction {
     id: string;
@@ -74,6 +76,13 @@ const WalletScreen: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isRecharging, setIsRecharging] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
+
+    // Razorpay WebView checkout state
+    const [showCheckout, setShowCheckout] = useState(false);
+    const [checkoutData, setCheckoutData] = useState<{ orderId: string; amount: number; keyId: string } | null>(null);
+    const [pendingRechargeAmount, setPendingRechargeAmount] = useState(0);
+    const [showAmountModal, setShowAmountModal] = useState(false);
+    const [customAmount, setCustomAmount] = useState('');
 
     const styles = createStyles(theme);
 
@@ -150,52 +159,15 @@ const WalletScreen: React.FC = () => {
                 theme: { color: '#FF6B35' }
             };
 
-            console.log('[WalletScreen] Opening Razorpay with options:', options);
-            console.log('[WalletScreen] About to call RazorpayCheckout.open()...');
-
-            // Step 4: Open Razorpay (EXACT same way as working app)
-            // DON'T set isRecharging here - let Razorpay open first!
-            RazorpayCheckout.open(options).then(async (data) => {
-                console.log('[WalletScreen] ✅ Payment successful!', data);
-
-                // NOW set verifying state
-                setIsVerifying(true);
-
-                try {
-                    // Step 5: Verify payment
-                    const verificationData = {
-                        razorpay_order_id: data.razorpay_order_id,
-                        razorpay_payment_id: data.razorpay_payment_id,
-                        razorpay_signature: data.razorpay_signature,
-                    };
-
-                    const verifyResponse = await verifyWalletRecharge(verificationData);
-
-                    if (verifyResponse.success) {
-                        Alert.alert('Success! 🎉', `₹${amount} added to your wallet successfully!`);
-                        // Refresh wallet data
-                        await fetchWalletData();
-                    } else {
-                        throw new Error(verifyResponse.error || 'Payment verification failed. Please contact support.');
-                    }
-                } catch (verificationError) {
-                    console.error('[WalletScreen] Verification Error:', verificationError);
-                    const message = verificationError instanceof Error ? verificationError.message : 'An unknown error occurred.';
-                    Alert.alert('Verification Failed', message);
-                } finally {
-                    setIsVerifying(false);
-                }
-            }).catch((error) => {
-                // Payment cancelled or failed
-                console.log(`[WalletScreen] Razorpay Error: ${error.code} | ${error.description}`);
-
-                // Don't show alert if user cancelled (code 0 or 2)
-                if (error.code !== 0 && error.code !== 2) {
-                    Alert.alert('Payment Failed', 'The payment was not completed. Please try again.');
-                }
+            // Step 4: Open Razorpay via WebView checkout component
+            setPendingRechargeAmount(amount);
+            setCheckoutData({
+                orderId,
+                amount: payableAmountRaw || 0,
+                keyId,
             });
-
-            console.log('[WalletScreen] RazorpayCheckout.open() called successfully');
+            setShowCheckout(true);
+            console.log('[WalletScreen] Showing Razorpay WebView checkout');
 
         } catch (apiError) {
             console.error('[WalletScreen] Recharge initiation error:', apiError);
@@ -203,6 +175,32 @@ const WalletScreen: React.FC = () => {
             Alert.alert('Error', message);
         }
     }, [user?.email, user?.name, fetchWalletData]);
+
+    const handlePaymentSuccess = async (data: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+        setShowCheckout(false);
+        setIsVerifying(true);
+
+        try {
+            const verifyResponse = await verifyWalletRecharge(
+                data.razorpay_order_id,
+                data.razorpay_payment_id,
+                data.razorpay_signature
+            );
+
+            if (verifyResponse.success) {
+                Alert.alert('Success! 🎉', `₹${pendingRechargeAmount} added to your wallet successfully!`);
+                await fetchWalletData();
+            } else {
+                throw new Error(verifyResponse.error || 'Payment verification failed.');
+            }
+        } catch (error) {
+            console.error('[WalletScreen] Verification Error:', error);
+            const message = error instanceof Error ? error.message : 'An unknown error occurred.';
+            Alert.alert('Verification Failed', message);
+        } finally {
+            setIsVerifying(false);
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
@@ -255,27 +253,8 @@ const WalletScreen: React.FC = () => {
                     <TouchableOpacity
                         style={styles.addMoneyButton}
                         onPress={() => {
-                            Alert.prompt(
-                                'Add Money',
-                                'Enter amount to add:',
-                                [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    {
-                                        text: 'Add',
-                                        onPress: (amount) => {
-                                            const numAmount = parseFloat(amount || '0');
-                                            if (numAmount > 0) {
-                                                handleRecharge(numAmount);
-                                            } else {
-                                                Alert.alert('Invalid Amount', 'Please enter a valid amount');
-                                            }
-                                        },
-                                    },
-                                ],
-                                'plain-text',
-                                '',
-                                'numeric'
-                            );
+                            setCustomAmount('');
+                            setShowAmountModal(true);
                         }}
                     >
                         <Ionicons name="add" size={20} color="#541C0D" />
@@ -362,6 +341,80 @@ const WalletScreen: React.FC = () => {
                     </View>
                 </View>
             )}
+
+            {/* Razorpay WebView Checkout */}
+            {checkoutData && (
+                <RazorpayCheckout
+                    visible={showCheckout}
+                    orderId={checkoutData.orderId}
+                    amount={checkoutData.amount}
+                    keyId={checkoutData.keyId}
+                    description={`Wallet Recharge - ₹${pendingRechargeAmount}`}
+                    prefillEmail={user?.email || ''}
+                    prefillName={user?.name || ''}
+                    onSuccess={handlePaymentSuccess}
+                    onDismiss={() => setShowCheckout(false)}
+                />
+            )}
+
+            {/* Custom Amount Input Modal */}
+            <Modal
+                visible={showAmountModal}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowAmountModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Add Money to Wallet</Text>
+                        <View style={styles.amountInputContainer}>
+                            <Text style={styles.currencyPrefix}>{CURRENCY_SYMBOL}</Text>
+                            <TextInput
+                                style={styles.amountInput}
+                                value={customAmount}
+                                onChangeText={setCustomAmount}
+                                placeholder="Enter amount"
+                                placeholderTextColor={theme.textMuted}
+                                keyboardType="numeric"
+                                autoFocus
+                            />
+                        </View>
+                        <View style={styles.modalQuickAmounts}>
+                            {[100, 200, 500, 1000, 2000].map((amt) => (
+                                <TouchableOpacity
+                                    key={amt}
+                                    style={styles.modalQuickBtn}
+                                    onPress={() => setCustomAmount(String(amt))}
+                                >
+                                    <Text style={styles.modalQuickText}>{CURRENCY_SYMBOL}{amt}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                        <View style={styles.modalActions}>
+                            <TouchableOpacity
+                                style={styles.modalCancelBtn}
+                                onPress={() => setShowAmountModal(false)}
+                            >
+                                <Text style={styles.modalCancelText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.modalPayBtn}
+                                onPress={() => {
+                                    const numAmount = parseFloat(customAmount || '0');
+                                    if (numAmount > 0) {
+                                        setShowAmountModal(false);
+                                        handleRecharge(numAmount);
+                                    } else {
+                                        Alert.alert('Invalid Amount', 'Please enter a valid amount');
+                                    }
+                                }}
+                            >
+                                <Text style={styles.modalPayText}>Proceed to Pay</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };
@@ -598,6 +651,93 @@ const createStyles = (theme: any) => StyleSheet.create({
         fontSize: Typography.sizes.md,
         fontWeight: Typography.weights.semibold,
         color: theme.textPrimary,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: theme.cardBackground,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 24,
+        paddingBottom: 40,
+    },
+    modalTitle: {
+        fontSize: Typography.sizes.xl,
+        fontWeight: Typography.weights.bold,
+        color: theme.textPrimary,
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    amountInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.background,
+        borderRadius: 16,
+        paddingHorizontal: 16,
+        marginBottom: 16,
+    },
+    currencyPrefix: {
+        fontSize: 24,
+        fontWeight: Typography.weights.bold,
+        color: theme.textPrimary,
+        marginRight: 8,
+    },
+    amountInput: {
+        flex: 1,
+        height: 56,
+        fontSize: 24,
+        fontWeight: Typography.weights.semibold,
+        color: theme.textPrimary,
+    },
+    modalQuickAmounts: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 20,
+    },
+    modalQuickBtn: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        backgroundColor: theme.background,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: theme.border || 'rgba(255,255,255,0.1)',
+    },
+    modalQuickText: {
+        fontSize: Typography.sizes.sm,
+        fontWeight: Typography.weights.medium,
+        color: theme.textPrimary,
+    },
+    modalActions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    modalCancelBtn: {
+        flex: 1,
+        paddingVertical: 16,
+        borderRadius: 16,
+        backgroundColor: theme.background,
+        alignItems: 'center',
+    },
+    modalCancelText: {
+        fontSize: Typography.sizes.md,
+        fontWeight: Typography.weights.semibold,
+        color: theme.textSecondary,
+    },
+    modalPayBtn: {
+        flex: 2,
+        paddingVertical: 16,
+        borderRadius: 16,
+        backgroundColor: theme.primary,
+        alignItems: 'center',
+    },
+    modalPayText: {
+        fontSize: Typography.sizes.md,
+        fontWeight: Typography.weights.semibold,
+        color: '#541C0D',
     },
 });
 

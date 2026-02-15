@@ -18,10 +18,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     useEffect(() => {
         const checkExistingAuth = async () => {
+            console.log('[AuthContext] Checking existing authentication...');
             try {
                 const result = await checkAuth();
+                console.log('[AuthContext] checkAuth result:', { authenticated: result.authenticated, user: result.user?.email });
                 if (result.authenticated && result.user) {
+                    console.log('[AuthContext] Setting user:', result.user.email);
                     setUser(result.user);
+                } else {
+                    console.log('[AuthContext] No existing auth, user will see sign-in screen');
                 }
             } catch (error) {
                 console.log('[AuthContext] Auth check failed:', error);
