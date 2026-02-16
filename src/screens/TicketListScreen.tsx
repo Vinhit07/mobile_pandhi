@@ -31,10 +31,12 @@ const TicketListScreen: React.FC = () => {
         try {
             setIsLoading(true);
             const data = await getTickets();
-            setOngoingTickets(data.ongoing);
-            setCompletedTickets(data.completed);
+            setOngoingTickets(data?.ongoing || []);
+            setCompletedTickets(data?.completed || []);
         } catch (error) {
             console.error('Error fetching tickets:', error);
+            setOngoingTickets([]);
+            setCompletedTickets([]);
         } finally {
             setIsLoading(false);
             setRefreshing(false);

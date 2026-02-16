@@ -30,10 +30,15 @@ export const getTickets = async (): Promise<{ ongoing: Ticket[], completed: Tick
         const response = await axios.get(`${API_BASE_URL}/customer/outlets/tickets`, {
             headers: { Authorization: `Bearer ${token}` }
         });
-        return response.data.tickets;
+        const tickets = response.data.tickets || {};
+        return {
+            ongoing: Array.isArray(tickets.ongoing) ? tickets.ongoing : [],
+            completed: Array.isArray(tickets.completed) ? tickets.completed : []
+        };
     } catch (error) {
         console.error('Error fetching tickets:', error);
-        throw error;
+        // Return empty arrays on error instead of throwing to prevent app crash
+        return { ongoing: [], completed: [] };
     }
 };
 
