@@ -8,3 +8,6 @@ export { default as CategoryDetailScreen } from './CategoryDetailScreen';
 export { default as PaymentScreen } from './PaymentScreen';
 export { default as OrderSuccessScreen } from './OrderSuccessScreen';
 export { default as OrdersScreen } from './OrdersScreen';
+export { default as TicketListScreen } from './TicketListScreen';
+export { default as CreateTicketScreen } from './CreateTicketScreen';
+export { default as TicketDetailScreen } from './TicketDetailScreen';

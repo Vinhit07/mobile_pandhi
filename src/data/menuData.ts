@@ -7,6 +7,8 @@ export interface MenuItem {
     image: string;
     category: string;
     outletId?: number; // Optional for backward compatibility with mock data
+    isVeg: boolean;
+    companyPaid?: boolean;
 }
 
 export interface MenuCategory {
@@ -46,6 +48,8 @@ export const menuCategories: MenuCategory[] = [
                 price: 120,
                 image: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=100&h=100&fit=crop',
                 category: 'beverages',
+                isVeg: true,
+                companyPaid: true,
             },
             {
                 id: 'bev2',
@@ -54,6 +58,7 @@ export const menuCategories: MenuCategory[] = [
                 price: 150,
                 image: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=100&h=100&fit=crop',
                 category: 'beverages',
+                isVeg: true,
             },
             {
                 id: 'bev3',
@@ -62,6 +67,7 @@ export const menuCategories: MenuCategory[] = [
                 price: 180,
                 image: 'https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=100&h=100&fit=crop',
                 category: 'beverages',
+                isVeg: true,
             },
         ],
     },
@@ -77,6 +83,7 @@ export const menuCategories: MenuCategory[] = [
                 price: 40,
                 image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=100&h=100&fit=crop',
                 category: 'snacks',
+                isVeg: true,
             },
             {
                 id: 'snk2',
@@ -85,6 +92,7 @@ export const menuCategories: MenuCategory[] = [
                 price: 60,
                 image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=100&h=100&fit=crop',
                 category: 'snacks',
+                isVeg: true,
             },
         ],
     },
@@ -100,6 +108,7 @@ export const menuCategories: MenuCategory[] = [
                 price: 220,
                 image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=100&h=100&fit=crop',
                 category: 'meals',
+                isVeg: false,
             },
             {
                 id: 'meal2',
@@ -108,6 +117,7 @@ export const menuCategories: MenuCategory[] = [
                 price: 180,
                 image: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=100&h=100&fit=crop',
                 category: 'meals',
+                isVeg: true,
             },
         ],
     },
@@ -123,6 +133,7 @@ export const menuCategories: MenuCategory[] = [
                 price: 80,
                 image: 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=100&h=100&fit=crop',
                 category: 'juices',
+                isVeg: true,
             },
             {
                 id: 'juice2',
@@ -131,6 +142,7 @@ export const menuCategories: MenuCategory[] = [
                 price: 70,
                 image: 'https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?w=100&h=100&fit=crop',
                 category: 'juices',
+                isVeg: true,
             },
         ],
     },
@@ -146,6 +158,7 @@ export const menuCategories: MenuCategory[] = [
                 price: 250,
                 image: 'https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?w=100&h=100&fit=crop',
                 category: 'main',
+                isVeg: false,
             },
             {
                 id: 'main2',
@@ -154,6 +167,7 @@ export const menuCategories: MenuCategory[] = [
                 price: 320,
                 image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=100&h=100&fit=crop',
                 category: 'main',
+                isVeg: false,
             },
         ],
     },

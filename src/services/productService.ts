@@ -54,6 +54,8 @@ export const transformProduct = (product: APIProduct): MenuItem => ({
     image: product.imageUrl || 'https://via.placeholder.com/100',
     category: product.category.toLowerCase(),
     outletId: product.outletId, // IMPORTANT: Preserve outletId for filtering
+    isVeg: product.isVeg,
+    companyPaid: product.companyPaid,
 });
 
 // Group products into categories

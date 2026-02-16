@@ -92,7 +92,11 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
                 contentContainerStyle={styles.scrollContent}
             >
                 {/* Header */}
-                <Header userName={user?.name?.split(' ')[0] || 'User'} greeting={getGreeting()} />
+                <Header
+                    userName={user?.name?.split(' ')[0] || 'User'}
+                    greeting={getGreeting()}
+                    onTicketPress={() => (navigation as any).navigate('TicketList')}
+                />
 
                 {/* Search Bar */}
                 <SearchBar

@@ -9,22 +9,26 @@ import {
     ScrollView,
     ActivityIndicator,
     RefreshControl,
+    Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { useTheme } from '../context';
 import { formatCurrency } from '../utils/currency';
 import { getOngoingOrders, getOrderHistory, APIOrder } from '../services/orderService';
 
 const OrdersScreen: React.FC = () => {
     const navigation = useNavigation();
+    const route = useRoute();
     const { theme } = useTheme();
     const [activeTab, setActiveTab] = useState<'active' | 'history'>('active');
     const [activeOrders, setActiveOrders] = useState<APIOrder[]>([]);
     const [historyOrders, setHistoryOrders] = useState<APIOrder[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState<APIOrder | null>(null);
+    const [isModalVisible, setIsModalVisible] = useState(false);
 
     const styles = createStyles(theme);
 
@@ -55,6 +59,12 @@ const OrdersScreen: React.FC = () => {
         fetchOrders();
     }, []);
 
+    useEffect(() => {
+        if ((route.params as any)?.initialTab) {
+            setActiveTab((route.params as any).initialTab);
+        }
+    }, [route.params]);
+
     useFocusEffect(
         React.useCallback(() => {
             fetchOrders();
@@ -75,6 +85,75 @@ const OrdersScreen: React.FC = () => {
         if (days === 0) return 'Today, ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
         if (days === 1) return 'Yesterday, ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    };
+
+    const handleViewOrder = (order: APIOrder) => {
+        setSelectedOrder(order);
+        setIsModalVisible(true);
+    };
+
+    const OrderDetailsModal = () => {
+        if (!selectedOrder) return null;
+
+        return (
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={isModalVisible}
+                onRequestClose={() => setIsModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Order Details</Text>
+                            <TouchableOpacity onPress={() => setIsModalVisible(false)} style={styles.closeButton}>
+                                <MaterialIcons name="close" size={24} color={theme.textPrimary} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody}>
+                            <View style={styles.modalInfoRow}>
+                                <Text style={styles.modalLabel}>Order ID</Text>
+                                <Text style={styles.modalValue}>#{selectedOrder.orderNumber || selectedOrder.id}</Text>
+                            </View>
+                            <View style={styles.modalInfoRow}>
+                                <Text style={styles.modalLabel}>Date</Text>
+                                <Text style={styles.modalValue}>{formatOrderDate(selectedOrder.createdAt)}</Text>
+                            </View>
+                            <View style={styles.modalInfoRow}>
+                                <Text style={styles.modalLabel}>Status</Text>
+                                <Text style={[styles.modalValue, { color: theme.primary }]}>{selectedOrder.status}</Text>
+                            </View>
+
+                            <View style={styles.divider} />
+
+                            <Text style={styles.modalSectionTitle}>Items</Text>
+                            {selectedOrder.items?.map((item, idx) => (
+                                <View key={idx} style={styles.modalItemRow}>
+                                    <Text style={styles.modalItemName}>{item.quantity}x {item.product.name}</Text>
+                                    <Text style={styles.modalItemPrice}>{formatCurrency(item.unitPrice * item.quantity)}</Text>
+                                </View>
+                            ))}
+
+                            <View style={styles.divider} />
+
+                            <View style={styles.modalTotalRow}>
+                                <Text style={styles.modalTotalLabel}>Total Amount</Text>
+                                <Text style={styles.modalTotalValue}>{formatCurrency(selectedOrder.totalAmount)}</Text>
+                            </View>
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+        );
+    };
+
+    const getStatusColor = (status: string) => {
+        const s = status.toLowerCase();
+        if (s === 'delivered' || s === 'completed') return { bg: 'rgba(34, 197, 94, 0.1)', text: '#4ade80', border: 'rgba(34, 197, 94, 0.2)' }; // Green
+        if (s === 'cancelled' || s === 'failed') return { bg: 'rgba(239, 68, 68, 0.1)', text: '#f87171', border: 'rgba(239, 68, 68, 0.2)' }; // Red
+        if (s === 'pending' || s === 'processing') return { bg: 'rgba(234, 179, 8, 0.1)', text: '#facc15', border: 'rgba(234, 179, 8, 0.2)' }; // Yellow
+        return { bg: 'rgba(255, 255, 255, 0.1)', text: theme.textMuted, border: 'rgba(255, 255, 255, 0.2)' }; // Default
     };
 
     return (
@@ -137,38 +216,50 @@ const OrdersScreen: React.FC = () => {
                             </View>
                         ) : (
                             activeOrders.map(order => (
-                                <View key={order.id} style={styles.activeCard}>
-                                    <View style={styles.cardHeader}>
-                                        <Text style={styles.orderId}>Order #{order.orderNumber || order.id}</Text>
-                                        <View style={styles.glowDot} />
+                                <View key={order.id} style={styles.historyCard}>
+                                    <View style={styles.historyHeader}>
+                                        <View>
+                                            <Text style={styles.orderIdText}>Order #{order.orderNumber || order.id}</Text>
+                                            <Text style={styles.dateText}>{formatOrderDate(order.createdAt)}</Text>
+                                        </View>
+                                        <View style={[styles.statusBadge, {
+                                            backgroundColor: getStatusColor(order.status).bg,
+                                            borderColor: getStatusColor(order.status).border
+                                        }]}>
+                                            <Text style={[styles.statusText, { color: getStatusColor(order.status).text }]}>{order.status}</Text>
+                                        </View>
                                     </View>
 
-                                    <View style={styles.itemList}>
-                                        {order.items?.map((item, idx) => (
-                                            <View key={idx} style={styles.itemRow}>
-                                                <Text style={styles.itemName}>{item.quantity}x {item.product.name}</Text>
-                                                <Text style={styles.itemPrice}>{formatCurrency(item.unitPrice)}</Text>
-                                            </View>
-                                        ))}
+                                    <View style={styles.historyContent}>
+                                        <View style={{ flex: 1 }}>
+                                            {order.items?.slice(0, 2).map((item, idx) => (
+                                                <View key={idx}>
+                                                    <Text style={styles.historyItemName}>{item.quantity}x {item.product.name}</Text>
+                                                </View>
+                                            ))}
+                                            {order.items && order.items.length > 2 && (
+                                                <Text style={styles.historyItemDetails}>+ {order.items.length - 2} more items</Text>
+                                            )}
+                                        </View>
+                                        <Text style={styles.historyTotal}>{formatCurrency(order.totalAmount)}</Text>
                                     </View>
 
                                     <View style={styles.divider} />
 
-                                    <View style={styles.totalRow}>
-                                        <Text style={styles.totalLabel}>TOTAL</Text>
-                                        <Text style={styles.totalValue}>{formatCurrency(order.totalAmount)}</Text>
-                                    </View>
+                                    <TouchableOpacity
+                                        style={styles.viewOrderButton}
+                                        onPress={() => handleViewOrder(order)}
+                                    >
+                                        <MaterialIcons name="visibility" size={18} color={theme.background} />
+                                        <Text style={styles.viewOrderText}>View Order</Text>
+                                    </TouchableOpacity>
                                 </View>
                             ))
                         )}
                     </View>
                 ) : (
                     <View style={styles.historyList}>
-                        <View style={styles.historySectionHeader}>
-                            <View style={styles.line} />
-                            <Text style={styles.sectionTitle}>RECENT HISTORY</Text>
-                            <View style={styles.line} />
-                        </View>
+
 
                         {historyOrders.length === 0 ? (
                             <View style={{ paddingVertical: 40, alignItems: 'center' }}>
@@ -179,38 +270,40 @@ const OrdersScreen: React.FC = () => {
                             historyOrders.map(order => (
                                 <View key={order.id} style={styles.historyCard}>
                                     <View style={styles.historyHeader}>
-                                        <View style={styles.dateInfo}>
-                                            <View style={styles.calendarIcon}>
-                                                <MaterialIcons name="calendar-today" size={14} color={theme.textMuted} />
-                                            </View>
+                                        <View>
+                                            <Text style={styles.orderIdText}>Order #{order.orderNumber || order.id}</Text>
                                             <Text style={styles.dateText}>{formatOrderDate(order.createdAt)}</Text>
                                         </View>
-                                        <View style={styles.statusBadge}>
-                                            <Text style={styles.statusText}>{order.status}</Text>
+                                        <View style={[styles.statusBadge, {
+                                            backgroundColor: getStatusColor(order.status).bg,
+                                            borderColor: getStatusColor(order.status).border
+                                        }]}>
+                                            <Text style={[styles.statusText, { color: getStatusColor(order.status).text }]}>{order.status}</Text>
                                         </View>
                                     </View>
 
                                     <View style={styles.historyContent}>
-                                        <View>
+                                        <View style={{ flex: 1 }}>
                                             {order.items?.slice(0, 2).map((item, idx) => (
                                                 <View key={idx}>
-                                                    <Text style={styles.historyItemName}>{item.product.name}</Text>
-                                                    {idx === 0 && order.items.length > 1 && (
-                                                        <Text style={styles.historyItemDetails}>
-                                                            + {order.items.length - 1} more item{order.items.length - 1 > 1 ? 's' : ''}
-                                                        </Text>
-                                                    )}
+                                                    <Text style={styles.historyItemName}>{item.quantity}x {item.product.name}</Text>
                                                 </View>
                                             ))}
+                                            {order.items && order.items.length > 2 && (
+                                                <Text style={styles.historyItemDetails}>+ {order.items.length - 2} more items</Text>
+                                            )}
                                         </View>
                                         <Text style={styles.historyTotal}>{formatCurrency(order.totalAmount)}</Text>
                                     </View>
 
                                     <View style={styles.divider} />
 
-                                    <TouchableOpacity style={styles.reorderButton}>
-                                        <MaterialIcons name="replay" size={18} color={theme.primary} />
-                                        <Text style={styles.reorderText}>Reorder</Text>
+                                    <TouchableOpacity
+                                        style={styles.viewOrderButton}
+                                        onPress={() => handleViewOrder(order)}
+                                    >
+                                        <MaterialIcons name="visibility" size={18} color={theme.background} />
+                                        <Text style={styles.viewOrderText}>View Order</Text>
                                     </TouchableOpacity>
                                 </View>
                             ))
@@ -218,6 +311,8 @@ const OrdersScreen: React.FC = () => {
                     </View>
                 )}
             </ScrollView>
+
+            <OrderDetailsModal />
         </SafeAreaView>
     );
 };
@@ -489,6 +584,118 @@ const createStyles = (theme: any) => StyleSheet.create({
     },
     reorderText: {
         fontSize: 14,
+        fontWeight: '700',
+        color: theme.primary,
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    // New Styles
+    orderIdText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: theme.textPrimary,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        marginBottom: 4,
+    },
+    viewOrderButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 10,
+        borderRadius: 8,
+        backgroundColor: theme.primary,
+    },
+    viewOrderText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: theme.background,
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: theme.cardBackground,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        maxHeight: '80%',
+        paddingBottom: 20,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: theme.textPrimary,
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    closeButton: {
+        padding: 4,
+    },
+    modalBody: {
+        padding: 20,
+    },
+    modalInfoRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 12,
+    },
+    modalLabel: {
+        fontSize: 14,
+        color: theme.textMuted,
+        fontFamily: 'PlusJakartaSans_500Medium',
+    },
+    modalValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.textPrimary,
+        fontFamily: 'PlusJakartaSans_600SemiBold',
+    },
+    modalSectionTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: theme.textPrimary,
+        marginBottom: 12,
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    modalItemRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    modalItemName: {
+        fontSize: 14,
+        color: theme.textPrimary,
+        fontFamily: 'PlusJakartaSans_500Medium',
+        flex: 1,
+    },
+    modalItemPrice: {
+        fontSize: 14,
+        color: theme.textPrimary,
+        fontFamily: 'PlusJakartaSans_600SemiBold',
+    },
+    modalTotalRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 12,
+        alignItems: 'center',
+    },
+    modalTotalLabel: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: theme.textPrimary,
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    modalTotalValue: {
+        fontSize: 20,
         fontWeight: '700',
         color: theme.primary,
         fontFamily: 'PlusJakartaSans_700Bold',

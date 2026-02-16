@@ -46,8 +46,7 @@ const CartScreen: React.FC = () => {
     const displayItems = items;
 
     const subtotal = displayItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-    const taxesAndCharges = 10;
-    const grandTotal = subtotal + taxesAndCharges;
+    const grandTotal = subtotal;
 
     const buildOrderData = (method: 'WALLET' | 'UPI' | 'CARD' | 'CASH'): PlaceOrderRequest => {
         const orderItems = items.map(item => ({
@@ -273,10 +272,7 @@ const CartScreen: React.FC = () => {
                                 <Text style={styles.billValue}>{formatCurrency(subtotal)}</Text>
                             </View>
 
-                            <View style={[styles.billRow, styles.billRowBorder]}>
-                                <Text style={styles.billLabel}>Taxes & Charges</Text>
-                                <Text style={styles.billValue}>{formatCurrency(taxesAndCharges)}</Text>
-                            </View>
+
 
                             <View style={styles.billRow}>
                                 <Text style={styles.grandTotalLabel}>Grand Total</Text>

@@ -32,6 +32,7 @@ export interface MenuItem {
     description: string;
     price: number;
     isVeg: boolean;
+    companyPaid?: boolean;
 }
 
 export interface MenuCategory {
@@ -137,40 +138,55 @@ const MenuLayout: React.FC<MenuLayoutProps> = ({
 
                         {category.isOpen && (
                             <View style={styles.categoryContent}>
-                                {category.items.map((item, index) => (
-                                    <View
-                                        key={item.id}
-                                        style={[
-                                            styles.itemContainer,
-                                            index < category.items.length - 1 && styles.itemSeparator,
-                                        ]}
-                                    >
-                                        {/* Veg Icon */}
-                                        <View style={styles.vegIconContainer}>
-                                            <View style={styles.vegIconOuter}>
-                                                <View style={styles.vegIconInner} />
+                                {category.items
+                                    .filter(item => !isVegOnly || item.isVeg)
+                                    .map((item, index) => (
+                                        <View
+                                            key={item.id}
+                                            style={[
+                                                styles.itemContainer,
+                                                index < category.items.length - 1 && styles.itemSeparator,
+                                            ]}
+                                        >
+                                            {/* Veg/Non-Veg Icon */}
+                                            <View style={styles.vegIconContainer}>
+                                                <View style={[
+                                                    styles.vegIconOuter,
+                                                    !item.isVeg && styles.nonVegIconOuter
+                                                ]}>
+                                                    <View style={[
+                                                        styles.vegIconInner,
+                                                        !item.isVeg && styles.nonVegIconInner
+                                                    ]} />
+                                                </View>
                                             </View>
-                                        </View>
 
-                                        <View style={styles.itemDetails}>
-                                            <View style={styles.itemHeader}>
-                                                <Text style={styles.itemName}>{item.name}</Text>
-                                                <Text style={styles.itemPrice}>₹{item.price}</Text>
+                                            <View style={styles.itemDetails}>
+                                                <View style={styles.itemHeader}>
+                                                    <View style={styles.titleContainer}>
+                                                        <Text style={styles.itemName}>{item.name}</Text>
+                                                        {item.companyPaid && (
+                                                            <View style={styles.companyPaidBadge}>
+                                                                <Text style={styles.companyPaidText}>Company Paid</Text>
+                                                            </View>
+                                                        )}
+                                                    </View>
+                                                    <Text style={styles.itemPrice}>₹{item.price}</Text>
+                                                </View>
+                                                <Text style={styles.itemDescription}>{item.description}</Text>
+                                                <TouchableOpacity
+                                                    style={styles.addButton}
+                                                    onPress={() => addItem({
+                                                        ...item,
+                                                        image: 'https://via.placeholder.com/150',
+                                                        category: category.title
+                                                    } as any)}
+                                                >
+                                                    <Text style={styles.addButtonText}>ADD</Text>
+                                                </TouchableOpacity>
                                             </View>
-                                            <Text style={styles.itemDescription}>{item.description}</Text>
-                                            <TouchableOpacity
-                                                style={styles.addButton}
-                                                onPress={() => addItem({
-                                                    ...item,
-                                                    image: 'https://via.placeholder.com/150',
-                                                    category: category.title
-                                                } as any)}
-                                            >
-                                                <Text style={styles.addButtonText}>ADD</Text>
-                                            </TouchableOpacity>
                                         </View>
-                                    </View>
-                                ))}
+                                    ))}
                             </View>
                         )}
                     </View>
@@ -363,6 +379,33 @@ const createStyles = (theme: any, categoryTitleColor?: string) =>
             color: theme.background,
             fontFamily: 'PlusJakartaSans_700Bold',
             letterSpacing: 0.5,
+        },
+        nonVegIconOuter: {
+            borderColor: '#EF4444',
+        },
+        nonVegIconInner: {
+            backgroundColor: '#EF4444',
+        },
+        titleContainer: {
+            flex: 1,
+            marginRight: 8,
+            gap: 4,
+        },
+        companyPaidBadge: {
+            backgroundColor: 'rgba(34, 197, 94, 0.15)', // Light green bg
+            paddingHorizontal: 6,
+            paddingVertical: 2,
+            borderRadius: 4,
+            alignSelf: 'flex-start',
+            borderWidth: 1,
+            borderColor: 'rgba(34, 197, 94, 0.3)',
+        },
+        companyPaidText: {
+            fontSize: 10,
+            fontWeight: '700',
+            color: '#15803d', // Green 700
+            fontFamily: 'PlusJakartaSans_700Bold',
+            textTransform: 'uppercase',
         },
     });
 

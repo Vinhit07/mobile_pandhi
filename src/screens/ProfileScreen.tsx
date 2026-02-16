@@ -42,7 +42,7 @@ const ProfileMenuItem: React.FC<ProfileMenuItemProps> = ({
     );
 };
 
-const ProfileScreen: React.FC = () => {
+const ProfileScreen: React.FC = ({ navigation }: any) => {
     const { theme, isDark, toggleTheme } = useTheme();
     const { user, logout } = useAuth();
     const styles = createStyles(theme);
@@ -124,27 +124,27 @@ const ProfileScreen: React.FC = () => {
 
                 {/* Menu Items */}
                 <View style={styles.menuSection}>
-                    <ProfileMenuItem
+                    {/* <ProfileMenuItem
                         icon={<Ionicons name="heart" size={22} color={theme.primary} />}
                         title="Favorite Items"
                         subtitle="Your most loved dishes"
                         onPress={() => { }}
                         theme={theme}
-                    />
+                    /> */}
                     <ProfileMenuItem
                         icon={<Ionicons name="time" size={22} color={theme.primary} />}
                         title="Order History"
                         subtitle="Past meals & reordering"
-                        onPress={() => { }}
+                        onPress={() => navigation.navigate('Orders', { initialTab: 'history' })}
                         theme={theme}
                     />
-                    <ProfileMenuItem
+                    {/* <ProfileMenuItem
                         icon={<Ionicons name="star" size={22} color={theme.primary} />}
                         title="Your Reviews"
                         subtitle="Ratings given to items"
                         onPress={() => { }}
                         theme={theme}
-                    />
+                    /> */}
                 </View>
 
                 {/* Logout Button */}

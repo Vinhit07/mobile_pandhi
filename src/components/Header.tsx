@@ -6,9 +6,10 @@ import { useTheme } from '../context';
 interface HeaderProps {
     userName: string;
     greeting: string;
+    onTicketPress?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ userName, greeting }) => {
+const Header: React.FC<HeaderProps> = ({ userName, greeting, onTicketPress }) => {
     const { theme } = useTheme();
     const styles = createStyles(theme);
 
@@ -29,8 +30,13 @@ const Header: React.FC<HeaderProps> = ({ userName, greeting }) => {
                     <Text style={styles.userName}>Hi, {userName}! 👋</Text>
                 </View>
             </View>
-            {/* Notification button removed as requested */}
-        </View>
+            <TouchableOpacity
+                style={styles.notificationButton}
+                onPress={onTicketPress}
+            >
+                <MaterialIcons name="confirmation-number" size={24} color={theme.primary} />
+            </TouchableOpacity>
+        </View >
     );
 };
 

@@ -15,7 +15,7 @@ import {
   PlusJakartaSans_700Bold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 
-import { HomeScreen, CartScreen, WalletScreen, ProfileScreen, PopupDetailScreen, CategoryDetailScreen, PaymentScreen, OrderSuccessScreen, OrdersScreen, SignInScreen } from './src/screens';
+import { HomeScreen, CartScreen, WalletScreen, ProfileScreen, PopupDetailScreen, CategoryDetailScreen, PaymentScreen, OrderSuccessScreen, OrdersScreen, SignInScreen, TicketListScreen, CreateTicketScreen, TicketDetailScreen } from './src/screens';
 import { CartProvider, ThemeProvider, useTheme, ToastProvider, AuthProvider, useAuth } from './src/context';
 import { BottomTabBar } from './src/components';
 
@@ -95,6 +95,21 @@ function AppNavigator() {
             name="OrderSuccess"
             component={OrderSuccessScreen}
             options={{ animation: 'fade' }}
+          />
+          <Stack.Screen
+            name="TicketList"
+            component={TicketListScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="CreateTicket"
+            component={CreateTicketScreen}
+            options={{ animation: 'slide_from_right' }}
+          />
+          <Stack.Screen
+            name="TicketDetail"
+            component={TicketDetailScreen}
+            options={{ animation: 'slide_from_right' }}
           />
         </Stack.Navigator>
       ) : (

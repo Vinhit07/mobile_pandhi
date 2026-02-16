@@ -31,7 +31,7 @@ const ViewCartPopup: React.FC = () => {
                     <Text style={styles.totalPrice}>
                         {formatCurrency(totalPrice)}
                     </Text>
-                    <Text style={styles.plusTaxes}>(plus taxes)</Text>
+
                 </View>
 
                 <TouchableOpacity
