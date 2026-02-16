@@ -130,6 +130,7 @@ const HomeScreen: React.FC = ({ navigation }: any) => {
                                     price: item.price,
                                     image: item.image,
                                     category: 'favorites',
+                                    isVeg: true
                                 })}
                             />
                         )}

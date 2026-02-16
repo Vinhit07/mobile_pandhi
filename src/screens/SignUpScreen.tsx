@@ -136,7 +136,7 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                                 <Ionicons name="shield-checkmark-outline" size={20} color={theme.textMuted} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
-                                    placeholder="Confirm Password"
+                                    placeholder="Retype Password"
                                     placeholderTextColor={theme.textMuted}
                                     value={confirmPassword}
                                     onChangeText={setConfirmPassword}
