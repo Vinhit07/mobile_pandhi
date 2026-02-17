@@ -23,11 +23,23 @@ export const signIn = async (
     password: string
 ): Promise<{ success: boolean; user?: AuthUser; error?: string }> => {
     try {
-        const response = await fetch(`${API_BASE_URL}/auth/signin`, {
+        const url = `${API_BASE_URL}/auth/signin`;
+        console.log('[AuthService] Fetching URL:', url);
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password }),
         });
+
+        console.log('[AuthService] Response status:', response.status);
+
+        // Guard: check response is JSON before parsing
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('[AuthService] Non-JSON response:', text.substring(0, 200));
+            return { success: false, error: 'Server returned an unexpected response. Check API_BASE_URL.' };
+        }
 
         const data = await response.json();
 
@@ -54,9 +66,11 @@ export const signIn = async (
         };
 
         return { success: true, user };
-    } catch (error) {
-        console.error('[AuthService] Sign in error:', error);
-        return { success: false, error: 'Network error. Check your connection.' };
+    } catch (error: any) {
+        console.error('[AuthService] Sign in error name:', error?.name);
+        console.error('[AuthService] Sign in error message:', error?.message);
+        console.error('[AuthService] Full error:', error);
+        return { success: false, error: `Network error: ${error?.message || 'Check your connection.'}` };
     }
 };
 

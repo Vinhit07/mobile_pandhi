@@ -78,7 +78,7 @@ const SignInScreen: React.FC = () => {
                     <View style={styles.logoContainer}>
                         <Ionicons name="flash" size={40} color={theme.primary} />
                     </View>
-                    <Text style={styles.brandName}>Quick Byte</Text>
+                    <Text style={styles.brandName}>Pandhi</Text>
                     <Text style={styles.brandTagline}>
                         {isSignUp ? 'Create your account' : 'Sign in to continue'}
                     </Text>

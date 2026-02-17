@@ -10,6 +10,7 @@ import {
     TextInput,
     StatusBar,
     Dimensions,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -94,14 +95,11 @@ const PopupDetailScreen: React.FC = () => {
     const styles = createStyles(theme);
 
     const handleAddItem = (item: PopupMenuItem) => {
-        addItem({
-            id: item.id,
-            name: item.name,
-            description: item.description,
-            price: item.price,
-            image: item.image,
-            category: popup.name,
-        });
+        Alert.alert(
+            'Coming Soon',
+            'This is mock data, just for viewing. This feature will be implemented soon!',
+            [{ text: 'OK' }]
+        );
     };
 
     const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);

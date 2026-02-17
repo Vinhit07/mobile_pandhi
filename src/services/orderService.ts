@@ -49,6 +49,7 @@ export interface APIOrder {
     status: string;
     deliverySlot: string | null;
     deliveryDate: string | null;
+    isPreOrder: boolean;
     createdAt: string;
     items: APIOrderItem[];
 }

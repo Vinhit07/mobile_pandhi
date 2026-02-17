@@ -81,11 +81,11 @@ const createStyles = (theme: any) => StyleSheet.create({
         marginBottom: 2,
     },
     userName: {
-        fontSize: 20, // text-xl
-        fontWeight: '700', // font-bold
+        fontSize: 20,
+        fontWeight: '700',
         color: theme.textPrimary,
         fontFamily: 'PlusJakartaSans_700Bold',
-        height: 24, // leading-tight approximation
+        lineHeight: 28,
     },
     notificationButton: {
         width: 40,

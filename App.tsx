@@ -64,7 +64,7 @@ function AppNavigator() {
         <View style={[styles.loadingLogo, { backgroundColor: theme.cardBackground }]}>
           <Ionicons name="fast-food" size={48} color={theme.primary} />
         </View>
-        <Text style={[styles.loadingText, { color: theme.textPrimary }]}>Quick Byte</Text>
+        <Text style={[styles.loadingText, { color: theme.textPrimary }]}>Pandhi</Text>
         <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 24 }} />
       </View>
     );

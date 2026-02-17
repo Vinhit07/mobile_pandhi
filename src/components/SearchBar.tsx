@@ -28,6 +28,11 @@ const SearchBar: React.FC<SearchBarProps> = ({
                     placeholder={placeholder}
                     placeholderTextColor={theme.textMuted}
                 />
+                {value.length > 0 && (
+                    <TouchableOpacity onPress={() => onChangeText('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <MaterialIcons name="close" size={18} color={theme.textMuted} />
+                    </TouchableOpacity>
+                )}
             </View>
         </View>
     );

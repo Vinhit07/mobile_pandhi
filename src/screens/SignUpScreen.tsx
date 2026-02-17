@@ -74,7 +74,7 @@ const SignUpScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                             <View style={styles.logoContainer}>
                                 <Ionicons name="fast-food" size={48} color={theme.primary} />
                             </View>
-                            <Text style={styles.appName}>Quick Byte</Text>
+                            <Text style={styles.appName}>Pandhi</Text>
                             <Text style={styles.subtitle}>Create your account to get started</Text>
                         </View>
 

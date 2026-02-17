@@ -218,16 +218,24 @@ const OrdersScreen: React.FC = () => {
                             activeOrders.map(order => (
                                 <View key={order.id} style={styles.historyCard}>
                                     <View style={styles.historyHeader}>
-                                        <View>
+                                        <View style={{ flex: 1 }}>
                                             <Text style={styles.orderIdText}>Order #{order.orderNumber || order.id}</Text>
                                             <Text style={styles.dateText}>{formatOrderDate(order.createdAt)}</Text>
                                         </View>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                                         <View style={[styles.statusBadge, {
                                             backgroundColor: getStatusColor(order.status).bg,
                                             borderColor: getStatusColor(order.status).border
                                         }]}>
                                             <Text style={[styles.statusText, { color: getStatusColor(order.status).text }]}>{order.status}</Text>
                                         </View>
+                                        {order.isPreOrder && (
+                                            <View style={styles.preOrderBadge}>
+                                                <MaterialIcons name="schedule" size={10} color="#60A5FA" />
+                                                <Text style={styles.preOrderBadgeText}>PRE-ORDER</Text>
+                                            </View>
+                                        )}
                                     </View>
 
                                     <View style={styles.historyContent}>
@@ -270,16 +278,24 @@ const OrdersScreen: React.FC = () => {
                             historyOrders.map(order => (
                                 <View key={order.id} style={styles.historyCard}>
                                     <View style={styles.historyHeader}>
-                                        <View>
+                                        <View style={{ flex: 1 }}>
                                             <Text style={styles.orderIdText}>Order #{order.orderNumber || order.id}</Text>
                                             <Text style={styles.dateText}>{formatOrderDate(order.createdAt)}</Text>
                                         </View>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
                                         <View style={[styles.statusBadge, {
                                             backgroundColor: getStatusColor(order.status).bg,
                                             borderColor: getStatusColor(order.status).border
                                         }]}>
                                             <Text style={[styles.statusText, { color: getStatusColor(order.status).text }]}>{order.status}</Text>
                                         </View>
+                                        {order.isPreOrder && (
+                                            <View style={styles.preOrderBadge}>
+                                                <MaterialIcons name="schedule" size={10} color="#60A5FA" />
+                                                <Text style={styles.preOrderBadgeText}>PRE-ORDER</Text>
+                                            </View>
+                                        )}
                                     </View>
 
                                     <View style={styles.historyContent}>
@@ -328,7 +344,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 24,
         paddingVertical: 20,
-        backgroundColor: 'rgba(53, 28, 21, 0.8)', // backdrop blur simulation
+        backgroundColor: theme.background,
     },
     headerButton: {
         width: 40,
@@ -409,7 +425,7 @@ const createStyles = (theme: any) => StyleSheet.create({
         borderRadius: 24,
         padding: 20,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: theme.border,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
@@ -460,7 +476,7 @@ const createStyles = (theme: any) => StyleSheet.create({
     },
     divider: {
         height: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        backgroundColor: theme.border,
         marginVertical: 16,
     },
     totalRow: {
@@ -506,11 +522,11 @@ const createStyles = (theme: any) => StyleSheet.create({
         fontFamily: 'PlusJakartaSans_600SemiBold',
     },
     historyCard: {
-        backgroundColor: 'rgba(74, 40, 32, 0.5)', // surface-brown/50
+        backgroundColor: theme.cardBackground,
         borderRadius: 16,
         padding: 16,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.05)',
+        borderColor: theme.border,
     },
     historyHeader: {
         flexDirection: 'row',
@@ -699,6 +715,24 @@ const createStyles = (theme: any) => StyleSheet.create({
         fontWeight: '700',
         color: theme.primary,
         fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    preOrderBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(96, 165, 250, 0.1)',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(96, 165, 250, 0.25)',
+    },
+    preOrderBadgeText: {
+        color: '#60A5FA',
+        fontSize: 9,
+        fontWeight: '700',
+        fontFamily: 'PlusJakartaSans_700Bold',
+        letterSpacing: 0.5,
     },
 });
 

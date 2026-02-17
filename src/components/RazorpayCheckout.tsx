@@ -76,7 +76,7 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
                     key: keyId,
                     amount: String(amount),
                     currency: 'INR',
-                    name: 'Quick Byte',
+                    name: 'Pandhi',
                     description: description,
                     order_id: orderId,
                     prefill: {
@@ -176,7 +176,7 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
                 "key": "${keyId}",
                 "amount": "${amount}",
                 "currency": "INR",
-                "name": "Quick Byte",
+                "name": "Pandhi",
                 "description": "${description}",
                 "order_id": "${orderId}",
                 "prefill": { "name": "${prefillName}", "email": "${prefillEmail}" },
@@ -244,21 +244,24 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
                     </TouchableOpacity>
                 </View>
 
+                {isLoading && (
+                    <View style={styles.loader}>
+                        <ActivityIndicator size="large" color="#FF6B35" />
+                        <Text style={styles.loadingText}>Loading Payment Gateway...</Text>
+                    </View>
+                )}
+
                 <WebView
                     ref={webViewRef}
                     source={{ html: nativeCheckoutHTML, baseUrl: 'https://razorpay.com' }}
                     onMessage={handleNativeMessage}
                     javaScriptEnabled={true}
                     domStorageEnabled={true}
-                    startInLoadingState={true}
-                    renderLoading={() => (
-                        <View style={styles.loader}>
-                            <ActivityIndicator size="large" color="#FF6B35" />
-                            <Text style={styles.loadingText}>Loading Payment Gateway...</Text>
-                        </View>
-                    )}
+                    onLoadStart={() => setIsLoading(true)}
+                    onLoadEnd={() => setIsLoading(false)}
                     onError={(syntheticEvent: any) => {
                         console.warn('WebView error: ', syntheticEvent.nativeEvent);
+                        setIsLoading(false);
                         Alert.alert('Network Error', 'Failed to load payment gateway.');
                     }}
                     originWhitelist={['*']}

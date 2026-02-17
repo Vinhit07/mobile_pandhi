@@ -77,6 +77,24 @@ const MenuLayout: React.FC<MenuLayoutProps> = ({
         );
     };
 
+    // Filter categories and items based on search query
+    const getFilteredCategories = () => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return categories;
+
+        return categories
+            .map((category) => ({
+                ...category,
+                items: category.items.filter((item) =>
+                    item.name.toLowerCase().includes(query)
+                ),
+                isOpen: true, // Auto-expand categories with search results
+            }))
+            .filter((category) => category.items.length > 0);
+    };
+
+    const filteredCategories = getFilteredCategories();
+
     const styles = createStyles(theme, categoryTitleColor);
 
     return (
@@ -114,6 +132,11 @@ const MenuLayout: React.FC<MenuLayoutProps> = ({
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                     />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <MaterialIcons name="close" size={20} color={theme.textMuted} />
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
 
@@ -392,7 +415,7 @@ const createStyles = (theme: any, categoryTitleColor?: string) =>
             gap: 4,
         },
         companyPaidBadge: {
-            backgroundColor: 'rgba(34, 197, 94, 0.15)', // Light green bg
+            backgroundColor: 'rgba(34, 197, 94, 0.15)',
             paddingHorizontal: 6,
             paddingVertical: 2,
             borderRadius: 4,
@@ -403,7 +426,7 @@ const createStyles = (theme: any, categoryTitleColor?: string) =>
         companyPaidText: {
             fontSize: 10,
             fontWeight: '700',
-            color: '#15803d', // Green 700
+            color: '#15803d',
             fontFamily: 'PlusJakartaSans_700Bold',
             textTransform: 'uppercase',
         },

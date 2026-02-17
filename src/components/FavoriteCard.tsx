@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { formatCurrency } from '../utils/currency';
 import { useTheme } from '../context';
 
@@ -10,6 +10,14 @@ interface FavoriteCardProps {
     image?: string; // Optional, not used in new design
     onOrderAgain: () => void;
 }
+
+const showMockAlert = () => {
+    Alert.alert(
+        'Coming Soon',
+        'This is mock data, just for viewing. This feature will be implemented soon!',
+        [{ text: 'OK' }]
+    );
+};
 
 const FavoriteCard: React.FC<FavoriteCardProps> = ({
     name,
@@ -23,7 +31,7 @@ const FavoriteCard: React.FC<FavoriteCardProps> = ({
     return (
         <TouchableOpacity
             style={styles.container}
-            onPress={onOrderAgain}
+            onPress={showMockAlert}
             activeOpacity={0.95}
         >
             <View style={styles.header}>
@@ -31,7 +39,7 @@ const FavoriteCard: React.FC<FavoriteCardProps> = ({
                 <Text style={styles.price}>{formatCurrency(price)}</Text>
             </View>
             <Text style={styles.lastOrdered}>Last ordered on {lastOrdered}</Text>
-            <TouchableOpacity style={styles.reorderButton} onPress={onOrderAgain} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.reorderButton} onPress={showMockAlert} activeOpacity={0.8}>
                 <Text style={styles.reorderText}>REORDER</Text>
             </TouchableOpacity>
         </TouchableOpacity>

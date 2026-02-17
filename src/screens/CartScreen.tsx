@@ -37,6 +37,27 @@ const CartScreen: React.FC = () => {
     const [orderTotal, setOrderTotal] = useState(0);
     const [paymentMethod, setPaymentMethod] = useState<'WALLET' | 'ONLINE'>('WALLET');
     const [isPlacing, setIsPlacing] = useState(false);
+    const [isPreOrder, setIsPreOrder] = useState(false);
+
+    // Helper to get tomorrow's date
+    const getTomorrowDate = () => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return tomorrow;
+    };
+
+    const formatDateLabel = (date: Date) => {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${date.getDate()} ${months[date.getMonth()]}`;
+    };
+
+    const getTomorrowISO = () => {
+        const d = getTomorrowDate();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
 
     // Razorpay state
     const [showCheckout, setShowCheckout] = useState(false);
@@ -55,13 +76,19 @@ const CartScreen: React.FC = () => {
             unitPrice: item.price,
         }));
 
-        return {
+        const data: PlaceOrderRequest = {
             totalAmount: getTotal(),
             paymentMethod: method,
             deliverySlot: 'SLOT_12_13',
             outletId: 1,
             items: orderItems,
         };
+
+        if (isPreOrder) {
+            data.requestedDeliveryDate = getTomorrowISO();
+        }
+
+        return data;
     };
 
     const handlePlaceOrder = async () => {
@@ -280,6 +307,51 @@ const CartScreen: React.FC = () => {
                             </View>
                         </View>
 
+                        {/* Order For Toggle (Today / Tomorrow) */}
+                        <Text style={styles.paymentMethodLabel}>ORDER FOR</Text>
+                        <View style={styles.paymentMethods}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.paymentOption,
+                                    !isPreOrder && styles.paymentOptionActive,
+                                ]}
+                                onPress={() => setIsPreOrder(false)}
+                            >
+                                <Ionicons
+                                    name="today"
+                                    size={20}
+                                    color={!isPreOrder ? theme.primary : theme.textMuted}
+                                />
+                                <Text style={[
+                                    styles.paymentOptionText,
+                                    !isPreOrder && styles.paymentOptionTextActive,
+                                ]}>Today</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.paymentOption,
+                                    isPreOrder && styles.paymentOptionActive,
+                                ]}
+                                onPress={() => setIsPreOrder(true)}
+                            >
+                                <Ionicons
+                                    name="calendar"
+                                    size={20}
+                                    color={isPreOrder ? theme.primary : theme.textMuted}
+                                />
+                                <View>
+                                    <Text style={[
+                                        styles.paymentOptionText,
+                                        isPreOrder && styles.paymentOptionTextActive,
+                                    ]}>Tomorrow</Text>
+                                    <Text style={[
+                                        styles.preOrderDateText,
+                                        isPreOrder && { color: theme.primary },
+                                    ]}>{formatDateLabel(getTomorrowDate())}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+
                         {/* Payment Method Selector */}
                         <Text style={styles.paymentMethodLabel}>PAYMENT METHOD</Text>
                         <View style={styles.paymentMethods}>
@@ -329,7 +401,9 @@ const CartScreen: React.FC = () => {
                             ) : (
                                 <React.Fragment>
                                     <Text style={styles.placeOrderText}>
-                                        {paymentMethod === 'ONLINE' ? 'Pay & Place Order' : 'Place Order'}
+                                        {paymentMethod === 'ONLINE'
+                                            ? (isPreOrder ? 'Pay & Pre-Order for Tomorrow' : 'Pay & Place Order')
+                                            : (isPreOrder ? 'Pre-Order for Tomorrow' : 'Place Order')}
                                     </Text>
                                     <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
                                 </React.Fragment>
@@ -353,7 +427,7 @@ const CartScreen: React.FC = () => {
                     orderId={checkoutData.orderId}
                     amount={checkoutData.amount}
                     keyId={checkoutData.keyId}
-                    description="Quick Byte Order"
+                    description="Pandhi Order"
                     prefillEmail={user?.email || ''}
                     prefillName={user?.name || ''}
                     onSuccess={handlePaymentSuccess}
@@ -604,6 +678,12 @@ const createStyles = (theme: any) => StyleSheet.create({
     paymentOptionTextActive: {
         color: theme.primary,
         fontWeight: Typography.weights.semibold,
+    },
+    preOrderDateText: {
+        fontSize: 11,
+        color: 'rgba(249, 244, 224, 0.4)',
+        marginTop: 2,
+        fontFamily: 'PlusJakartaSans_400Regular',
     },
     buttonDisabled: {
         opacity: 0.6,

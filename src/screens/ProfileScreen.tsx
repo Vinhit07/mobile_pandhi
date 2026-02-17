@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import Typography from '../constants/Typography';
 import { useTheme, useAuth } from '../context';
 
@@ -46,6 +47,14 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
     const { theme, isDark, toggleTheme } = useTheme();
     const { user, logout } = useAuth();
     const styles = createStyles(theme);
+
+    const showComingSoon = () => {
+        Alert.alert(
+            'Coming Soon',
+            'This is mock data, just for viewing. This feature will be implemented soon!',
+            [{ text: 'OK' }]
+        );
+    };
 
     const handleLogout = () => {
         Alert.alert(
@@ -87,16 +96,6 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
                     <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
                 </View>
 
-                {/* Tags */}
-                <View style={styles.tagsContainer}>
-                    <View style={styles.tag}>
-                        <Text style={styles.tagText}>Employee ID: #12345</Text>
-                    </View>
-                    <View style={styles.tag}>
-                        <Text style={styles.tagText}>Joined: Jan 2023</Text>
-                    </View>
-                </View>
-
                 {/* Theme Toggle */}
                 <View style={styles.themeToggleContainer}>
                     <View style={styles.themeToggleLeft}>
@@ -128,7 +127,7 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
                         icon={<Ionicons name="heart" size={22} color={theme.primary} />}
                         title="Favorite Items"
                         subtitle="Your most loved dishes"
-                        onPress={() => { }}
+                        onPress={showComingSoon}
                         theme={theme}
                     /> */}
                     <ProfileMenuItem
@@ -142,7 +141,7 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
                         icon={<Ionicons name="star" size={22} color={theme.primary} />}
                         title="Your Reviews"
                         subtitle="Ratings given to items"
-                        onPress={() => { }}
+                        onPress={showComingSoon}
                         theme={theme}
                     /> */}
                 </View>
