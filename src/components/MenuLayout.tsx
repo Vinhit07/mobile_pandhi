@@ -77,18 +77,22 @@ const MenuLayout: React.FC<MenuLayoutProps> = ({
         );
     };
 
-    // Filter categories and items based on search query
+    // Filter categories and items based on search query AND veg toggle
     const getFilteredCategories = () => {
         const query = searchQuery.trim().toLowerCase();
-        if (!query) return categories;
 
         return categories
             .map((category) => ({
                 ...category,
-                items: category.items.filter((item) =>
-                    item.name.toLowerCase().includes(query)
-                ),
-                isOpen: true, // Auto-expand categories with search results
+                items: category.items.filter((item) => {
+                    // Apply veg filter
+                    if (isVegOnly && !item.isVeg) return false;
+                    // Apply search filter
+                    if (query && !item.name.toLowerCase().includes(query)) return false;
+                    return true;
+                }),
+                // Auto-expand categories when searching
+                isOpen: query ? true : category.isOpen,
             }))
             .filter((category) => category.items.length > 0);
     };
@@ -141,7 +145,7 @@ const MenuLayout: React.FC<MenuLayoutProps> = ({
             </View>
 
             <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-                {categories.map((category) => (
+                {filteredCategories.map((category) => (
                     <View key={category.id} style={styles.categoryContainer}>
                         <TouchableOpacity
                             style={styles.categoryHeader}
@@ -162,7 +166,6 @@ const MenuLayout: React.FC<MenuLayoutProps> = ({
                         {category.isOpen && (
                             <View style={styles.categoryContent}>
                                 {category.items
-                                    .filter(item => !isVegOnly || item.isVeg)
                                     .map((item, index) => (
                                         <View
                                             key={item.id}
