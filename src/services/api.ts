@@ -9,7 +9,7 @@ import { Platform } from 'react-native';
 // Base URL for the backend API - automatically switches based on platform
 // - Web browser: uses localhost
 // - Mobile device: uses localtunnel (bypasses firewall)
-const TUNNEL_URL = 'https://lovely-hands-admire.loca.lt';
+const TUNNEL_URL = 'http://10.112.175.34:5500';
 const PORT = '5500';
 
 export const API_BASE_URL = Platform.OS === 'web'

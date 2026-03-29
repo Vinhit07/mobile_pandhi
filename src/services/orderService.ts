@@ -51,6 +51,8 @@ export interface APIOrder {
     deliveryDate: string | null;
     isPreOrder: boolean;
     createdAt: string;
+    token?: number | null;
+    tokenQty?: number;
     items: APIOrderItem[];
 }
 

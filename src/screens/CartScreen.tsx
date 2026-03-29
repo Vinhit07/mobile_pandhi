@@ -35,6 +35,8 @@ const CartScreen: React.FC = () => {
     const [orderId, setOrderId] = useState('');
     const [orderedItems, setOrderedItems] = useState<CartItem[]>([]);
     const [orderTotal, setOrderTotal] = useState(0);
+    const [orderToken, setOrderToken] = useState<number | null>(null);
+    const [orderTokenQty, setOrderTokenQty] = useState(0);
     const [paymentMethod, setPaymentMethod] = useState<'WALLET' | 'ONLINE'>('WALLET');
     const [isPlacing, setIsPlacing] = useState(false);
     const [isPreOrder, setIsPreOrder] = useState(false);
@@ -127,6 +129,10 @@ const CartScreen: React.FC = () => {
                 setOrderedItems([...items]);
                 setOrderTotal(result.order.totalAmount);
 
+                // Set token info from backend response
+                setOrderToken(result.order.token ?? null);
+                setOrderTokenQty(result.order.tokenQty || 1);
+
                 // Clear cart after successful order
                 clearCart();
 
@@ -194,6 +200,10 @@ const CartScreen: React.FC = () => {
                 setOrderId(result.order.orderNumber || generateOrderId());
                 setOrderedItems([...items]);
                 setOrderTotal(result.order.totalAmount);
+
+                // Set token info from backend response
+                setOrderToken(result.order.token ?? null);
+                setOrderTokenQty(result.order.tokenQty || 1);
 
                 // Clear cart after successful order
                 clearCart();
@@ -418,6 +428,8 @@ const CartScreen: React.FC = () => {
                 items={orderedItems}
                 total={orderTotal}
                 onDone={handleOrderDone}
+                token={orderToken}
+                tokenQty={orderTokenQty}
             />
 
             {/* Razorpay Checkout */}

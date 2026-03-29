@@ -124,6 +124,16 @@ const OrdersScreen: React.FC = () => {
                                 <Text style={styles.modalLabel}>Status</Text>
                                 <Text style={[styles.modalValue, { color: theme.primary }]}>{selectedOrder.status}</Text>
                             </View>
+                            {selectedOrder.token != null && (
+                                <View style={styles.modalInfoRow}>
+                                    <Text style={styles.modalLabel}>Beverage Token</Text>
+                                    <Text style={[styles.modalValue, { color: '#b45309' }]}>
+                                        {selectedOrder.tokenQty && selectedOrder.tokenQty > 1
+                                            ? `Token: [${selectedOrder.token - selectedOrder.tokenQty + 1} - ${selectedOrder.token}] (${selectedOrder.tokenQty})`
+                                            : `Token: ${selectedOrder.token} (1)`}
+                                    </Text>
+                                </View>
+                            )}
 
                             <View style={styles.divider} />
 
@@ -223,7 +233,7 @@ const OrdersScreen: React.FC = () => {
                                             <Text style={styles.dateText}>{formatOrderDate(order.createdAt)}</Text>
                                         </View>
                                     </View>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
                                         <View style={[styles.statusBadge, {
                                             backgroundColor: getStatusColor(order.status).bg,
                                             borderColor: getStatusColor(order.status).border
@@ -234,6 +244,15 @@ const OrdersScreen: React.FC = () => {
                                             <View style={styles.preOrderBadge}>
                                                 <MaterialIcons name="schedule" size={10} color="#60A5FA" />
                                                 <Text style={styles.preOrderBadgeText}>PRE-ORDER</Text>
+                                            </View>
+                                        )}
+                                        {order.token != null && (
+                                            <View style={styles.tokenBadge}>
+                                                <Text style={styles.tokenBadgeText}>
+                                                    {order.tokenQty && order.tokenQty > 1
+                                                        ? `Token: [${order.token - order.tokenQty + 1} - ${order.token}] (${order.tokenQty})`
+                                                        : `Token: ${order.token} (1)`}
+                                                </Text>
                                             </View>
                                         )}
                                     </View>
@@ -283,7 +302,7 @@ const OrdersScreen: React.FC = () => {
                                             <Text style={styles.dateText}>{formatOrderDate(order.createdAt)}</Text>
                                         </View>
                                     </View>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
                                         <View style={[styles.statusBadge, {
                                             backgroundColor: getStatusColor(order.status).bg,
                                             borderColor: getStatusColor(order.status).border
@@ -294,6 +313,15 @@ const OrdersScreen: React.FC = () => {
                                             <View style={styles.preOrderBadge}>
                                                 <MaterialIcons name="schedule" size={10} color="#60A5FA" />
                                                 <Text style={styles.preOrderBadgeText}>PRE-ORDER</Text>
+                                            </View>
+                                        )}
+                                        {order.token != null && (
+                                            <View style={styles.tokenBadge}>
+                                                <Text style={styles.tokenBadgeText}>
+                                                    {order.tokenQty && order.tokenQty > 1
+                                                        ? `Token: [${order.token - order.tokenQty + 1} - ${order.token}] (${order.tokenQty})`
+                                                        : `Token: ${order.token} (1)`}
+                                                </Text>
                                             </View>
                                         )}
                                     </View>
@@ -733,6 +761,23 @@ const createStyles = (theme: any) => StyleSheet.create({
         fontWeight: '700',
         fontFamily: 'PlusJakartaSans_700Bold',
         letterSpacing: 0.5,
+    },
+    tokenBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(234, 179, 8, 0.1)',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(234, 179, 8, 0.3)',
+    },
+    tokenBadgeText: {
+        color: '#d97706',
+        fontSize: 10,
+        fontWeight: '700',
+        fontFamily: 'PlusJakartaSans_700Bold',
     },
 });
 

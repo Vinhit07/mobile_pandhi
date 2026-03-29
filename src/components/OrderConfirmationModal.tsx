@@ -19,6 +19,8 @@ interface OrderConfirmationModalProps {
     items: CartItem[];
     total: number;
     onDone: () => void;
+    token?: number | null;   // ending token assigned by backend
+    tokenQty?: number;       // how many company-paid beverages were in this order
 }
 
 const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
@@ -27,6 +29,8 @@ const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
     items,
     total,
     onDone,
+    token,
+    tokenQty = 1,
 }) => {
     const { theme } = useTheme();
     const styles = createStyles(theme);
@@ -52,6 +56,18 @@ const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
                         <Text style={styles.orderIdLabel}>ORDER ID</Text>
                         <Text style={styles.orderId}>#{orderId}</Text>
                     </View>
+
+                    {/* Beverage Token Badge */}
+                    {token != null && (
+                        <View style={styles.tokenContainer}>
+                            <Text style={styles.tokenLabel}>BEVERAGE TOKEN</Text>
+                            <Text style={styles.tokenValue}>
+                                {tokenQty > 1
+                                    ? `Token: [${token - tokenQty + 1} - ${token}] (${tokenQty})`
+                                    : `Token: ${token} (1)`}
+                            </Text>
+                        </View>
+                    )}
 
                     <ScrollView style={styles.itemsList} showsVerticalScrollIndicator={false}>
                         {items.map((item) => (
@@ -197,6 +213,39 @@ const createStyles = (theme: any) => StyleSheet.create({
         fontWeight: Typography.weights.semibold,
         color: '#FFFFFF',
         textAlign: 'center',
+    },
+    tokenContainer: {
+        width: '100%',
+        backgroundColor: typeof theme.primary === 'string' ? theme.primary + '1A' : 'rgba(234, 179, 8, 0.1)',
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: typeof theme.primary === 'string' ? theme.primary + '66' : 'rgba(234, 179, 8, 0.4)',
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+        marginBottom: 20,
+        gap: 4,
+    },
+    tokenLabel: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: theme.primary,
+        letterSpacing: 1.5,
+        textTransform: 'uppercase',
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    tokenValue: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: theme.textPrimary,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        letterSpacing: 1,
+    },
+    tokenHint: {
+        fontSize: 11,
+        color: theme.textSecondary,
+        opacity: 0.7,
+        fontFamily: 'PlusJakartaSans_400Regular',
     },
 });
 

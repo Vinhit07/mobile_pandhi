@@ -8,6 +8,7 @@ import {
     StatusBar,
     Switch,
     Alert,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,20 +58,26 @@ const ProfileScreen: React.FC = ({ navigation }: any) => {
     };
 
     const handleLogout = () => {
-        Alert.alert(
-            'Logout',
-            'Are you sure you want to logout?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Logout',
-                    style: 'destructive',
-                    onPress: async () => {
-                        await logout();
+        if (Platform.OS === 'web') {
+            if (window.confirm('Are you sure you want to logout?')) {
+                logout();
+            }
+        } else {
+            Alert.alert(
+                'Logout',
+                'Are you sure you want to logout?',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Logout',
+                        style: 'destructive',
+                        onPress: async () => {
+                            await logout();
+                        },
                     },
-                },
-            ]
-        );
+                ]
+            );
+        }
     };
 
     return (
