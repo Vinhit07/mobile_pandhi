@@ -15,7 +15,7 @@ import {
   PlusJakartaSans_700Bold,
 } from '@expo-google-fonts/plus-jakarta-sans';
 
-import { HomeScreen, CartScreen, WalletScreen, ProfileScreen, PopupDetailScreen, CategoryDetailScreen, PaymentScreen, OrderSuccessScreen, OrdersScreen, SignInScreen, TicketListScreen, CreateTicketScreen, TicketDetailScreen } from './src/screens';
+import { HomeScreen, CartScreen, WalletScreen, ProfileScreen, PopupDetailScreen, CategoryDetailScreen, PaymentScreen, OrderSuccessScreen, OrdersScreen, SignInScreen, TicketListScreen, CreateTicketScreen, TicketDetailScreen, BadgeVerificationScreen, OTPVerificationScreen, ProfileSetupScreen } from './src/screens';
 import { CartProvider, ThemeProvider, useTheme, ToastProvider, AuthProvider, useAuth } from './src/context';
 import { BottomTabBar } from './src/components';
 
@@ -49,6 +49,9 @@ function AuthNavigator() {
   return (
     <AuthStack.Navigator screenOptions={{ headerShown: false }}>
       <AuthStack.Screen name="SignIn" component={SignInScreen} />
+      <AuthStack.Screen name="BadgeVerification" component={BadgeVerificationScreen} />
+      <AuthStack.Screen name="OTPVerification" component={OTPVerificationScreen} />
+      <AuthStack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
     </AuthStack.Navigator>
   );
 }

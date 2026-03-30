@@ -1,4 +1,7 @@
 export { default as HomeScreen } from './HomeScreen';
+export { default as BadgeVerificationScreen } from './BadgeVerificationScreen';
+export { default as OTPVerificationScreen } from './OTPVerificationScreen';
+export { default as ProfileSetupScreen } from './ProfileSetupScreen';
 export { default as CartScreen } from './CartScreen';
 export { default as WalletScreen } from './WalletScreen';
 export { default as ProfileScreen } from './ProfileScreen';

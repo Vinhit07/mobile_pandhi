@@ -16,11 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useTheme } from '../context';
 import Typography from '../constants/Typography';
 
-const SignInScreen: React.FC = () => {
-    const { login, register } = useAuth();
+const SignInScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+    const { login } = useAuth();
     const { theme } = useTheme();
-    const [isSignUp, setIsSignUp] = useState(false);
-    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -33,21 +31,12 @@ const SignInScreen: React.FC = () => {
             return;
         }
 
-        if (isSignUp && !name.trim()) {
-            Alert.alert('Missing Name', 'Please enter your name.');
-            return;
-        }
-
         setIsLoading(true);
         let result;
 
         try {
-            console.log('[SignIn] Attempting', isSignUp ? 'register' : 'login', 'with email:', email.trim().toLowerCase());
-            if (isSignUp) {
-                result = await register(name.trim(), email.trim().toLowerCase(), password);
-            } else {
-                result = await login(email.trim().toLowerCase(), password);
-            }
+            console.log('[SignIn] Attempting login with email:', email.trim().toLowerCase());
+            result = await login(email.trim().toLowerCase(), password);
             console.log('[SignIn] Result:', JSON.stringify(result));
         } catch (err) {
             console.error('[SignIn] Unexpected error:', err);
@@ -58,7 +47,7 @@ const SignInScreen: React.FC = () => {
 
         if (!result.success) {
             Alert.alert(
-                isSignUp ? 'Sign Up Failed' : 'Sign In Failed',
+                'Sign In Failed',
                 result.error || 'Please try again.'
             );
         }
@@ -73,33 +62,17 @@ const SignInScreen: React.FC = () => {
                 style={styles.content}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
-                {/* Logo */}
                 <View style={styles.brandSection}>
                     <View style={styles.logoContainer}>
                         <Ionicons name="flash" size={40} color={theme.primary} />
                     </View>
                     <Text style={styles.brandName}>Pandhi</Text>
                     <Text style={styles.brandTagline}>
-                        {isSignUp ? 'Create your account' : 'Sign in to continue'}
+                        Sign in to continue
                     </Text>
                 </View>
 
                 <View style={styles.formSection}>
-                    {/* Name (sign up only) */}
-                    {isSignUp && (
-                        <View style={styles.inputContainer}>
-                            <Ionicons name="person-outline" size={20} color={theme.textMuted} style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Full name"
-                                placeholderTextColor={theme.textMuted}
-                                value={name}
-                                onChangeText={setName}
-                                autoCapitalize="words"
-                            />
-                        </View>
-                    )}
-
                     {/* Email */}
                     <View style={styles.inputContainer}>
                         <Ionicons name="mail-outline" size={20} color={theme.textMuted} style={styles.inputIcon} />
@@ -145,7 +118,7 @@ const SignInScreen: React.FC = () => {
                             <ActivityIndicator color="#FFF" />
                         ) : (
                             <Text style={styles.primaryButtonText}>
-                                {isSignUp ? 'Create Account' : 'Sign In'}
+                                Sign In
                             </Text>
                         )}
                     </TouchableOpacity>
@@ -153,14 +126,12 @@ const SignInScreen: React.FC = () => {
                     {/* Toggle */}
                     <TouchableOpacity
                         style={styles.toggleButton}
-                        onPress={() => setIsSignUp(!isSignUp)}
+                        onPress={() => navigation.navigate('BadgeVerification')}
                     >
                         <Text style={styles.toggleText}>
-                            {isSignUp
-                                ? 'Already have an account? '
-                                : "Don't have an account? "}
+                            Don't have an account?{' '}
                             <Text style={styles.toggleHighlight}>
-                                {isSignUp ? 'Sign In' : 'Sign Up'}
+                                Sign Up
                             </Text>
                         </Text>
                     </TouchableOpacity>

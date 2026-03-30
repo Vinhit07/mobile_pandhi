@@ -11,9 +11,14 @@ export interface AuthUser {
     role: string;
 }
 
+// yjod od gt tedomh yjr ttavomg pf thr git
+
 // ============================================================
 // AUTH FUNCTIONS
 // ============================================================
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
 /**
  * Sign in with email and password
@@ -115,6 +120,95 @@ export const signUp = async (
 };
 
 /**
+ * Verify Badge ID
+ */
+export const verifyBadge = async (badgeId: string): Promise<{ success: boolean; email?: string; name?: string; error?: string }> => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/verify-badge`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ badgeId }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            return { success: false, error: data.message || 'Verification failed' };
+        }
+
+        return { success: true, email: data.email, name: data.name };
+    } catch (error) {
+        console.error('[AuthService] verify badge error:', error);
+        return { success: false, error: 'Network error. Check your connection.' };
+    }
+};
+
+/**
+ * Verify OTP via backend proxy (routes through Go server to Supabase)
+ */
+export const verifyOtp = async (email: string, token: string): Promise<{ success: boolean; session?: any; error?: string }> => {
+    try {
+        const url = `${API_BASE_URL}/auth/verify-badge-otp`;
+        console.log('[AuthService] Verifying OTP via backend:', url);
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, token }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            return { success: false, error: data.message || 'Invalid OTP' };
+        }
+
+        return { success: true, session: data.session };
+    } catch (error) {
+        console.error('[AuthService] verify OTP error:', error);
+        return { success: false, error: 'Network error while verifying OTP.' };
+    }
+};
+
+/**
+ * Setup Profile (completes registration)
+ */
+export const setupProfile = async (
+    badgeId: string,
+    email: string,
+    name: string,
+    password: string
+): Promise<{ success: boolean; user?: AuthUser; error?: string }> => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/profile-setup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ badgeId, email, name, password, retypePassword: password }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            return { success: false, error: data.message || 'Profile setup failed' };
+        }
+
+        const token = data.token || data.data?.token;
+        if (token) {
+            await setAuthToken(token);
+        }
+
+        const user: AuthUser = {
+            id: data.user?.id || 0,
+            name: data.user?.name || name,
+            email: data.user?.email || email,
+            role: data.user?.role || 'CUSTOMER',
+        };
+
+        return { success: true, user };
+    } catch (error) {
+        console.error('[AuthService] profile setup error:', error);
+        return { success: false, error: 'Network error. Check your connection.' };
+    }
+};
+
+/**
  * Sign out
  */
 export const signOut = async (): Promise<void> => {
@@ -172,4 +266,4 @@ export const checkAuth = async (): Promise<{
     }
 };
 
-export default { signIn, signUp, signOut, checkAuth };
+export default { signIn, signUp, signOut, checkAuth, verifyBadge, verifyOtp, setupProfile };

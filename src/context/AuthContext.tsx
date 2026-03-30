@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AuthUser, signIn, signUp, signOut, checkAuth } from '../services/authService';
+import { AuthUser, signIn, signUp, signOut, checkAuth, setupProfile } from '../services/authService';
 
 interface AuthContextType {
     user: AuthUser | null;
@@ -7,6 +7,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    completeProfileSetup: (badgeId: string, email: string, name: string, password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
 }
 
@@ -55,6 +56,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return { success: false, error: result.error };
     };
 
+    const completeProfileSetup = async (badgeId: string, email: string, name: string, password: string) => {
+        const result = await setupProfile(badgeId, email, name, password);
+        if (result.success && result.user) {
+            setUser(result.user);
+            return { success: true };
+        }
+        return { success: false, error: result.error };
+    };
+
     const logout = async () => {
         await signOut();
         setUser(null);
@@ -68,6 +78,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 isAuthenticated: user !== null,
                 login,
                 register,
+                completeProfileSetup,
                 logout,
             }}
         >
