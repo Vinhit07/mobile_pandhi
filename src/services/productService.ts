@@ -56,6 +56,8 @@ export const transformProduct = (product: APIProduct): MenuItem => ({
     outletId: product.outletId, // IMPORTANT: Preserve outletId for filtering
     isVeg: product.isVeg,
     companyPaid: product.companyPaid,
+    availableQuantity: product.availableQuantity,
+    isAvailable: product.isAvailable,
 });
 
 // Group products into categories

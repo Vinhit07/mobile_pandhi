@@ -9,6 +9,8 @@ export interface MenuItem {
     outletId?: number; // Optional for backward compatibility with mock data
     isVeg: boolean;
     companyPaid?: boolean;
+    availableQuantity?: number;
+    isAvailable?: boolean;
 }
 
 export interface MenuCategory {

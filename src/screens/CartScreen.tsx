@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -11,12 +11,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Typography from '../constants/Typography';
 import { CartItemCard, OrderConfirmationModal } from '../components';
 import { useCart, useTheme, useAuth, CartItem } from '../context';
 import { formatCurrency } from '../utils/currency';
 import { placeOrder, PlaceOrderRequest } from '../services/orderService';
+import { getCurrentQuota } from '../services/productService';
 import { isAuthenticated } from '../services/api';
 import { getRazorpayKey, createOrderPayment, verifyOrderPayment } from '../services/paymentService';
 import RazorpayCheckout from '../components/RazorpayCheckout';
@@ -29,6 +30,8 @@ const CartScreen: React.FC = () => {
         items,
         updateQuantity,
         clearCart,
+        remainingQuota,
+        refreshQuota,
     } = useCart();
 
     const [showOrderModal, setShowOrderModal] = useState(false);
@@ -40,6 +43,14 @@ const CartScreen: React.FC = () => {
     const [paymentMethod, setPaymentMethod] = useState<'WALLET' | 'ONLINE'>('WALLET');
     const [isPlacing, setIsPlacing] = useState(false);
     const [isPreOrder, setIsPreOrder] = useState(false);
+    // Refresh quota every time cart comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            if (refreshQuota) {
+                refreshQuota();
+            }
+        }, [refreshQuota])
+    );
 
     // Helper to get tomorrow's date
     const getTomorrowDate = () => {
@@ -65,11 +76,46 @@ const CartScreen: React.FC = () => {
     const [showCheckout, setShowCheckout] = useState(false);
     const [checkoutData, setCheckoutData] = useState<{ orderId: string; amount: number; keyId: string } | null>(null);
 
+    // remainingQuota is now managed by CartContext and fetched on mount there
+
     // Use real cart items only - no mock data
     const displayItems = items;
 
+    // ===QUOTA-AWARE PRICING===
+    // Compute how many company-paid units fall within the free quota (FIFO per item)
+    const computeQuotaBreakdown = () => {
+        let quotaLeft = remainingQuota;
+        const breakdown: Array<{ item: typeof items[0]; freeQty: number; paidQty: number }> = [];
+
+        for (const item of items) {
+            if (item.companyPaid) {
+                const freeQty = Math.min(item.quantity, Math.max(0, quotaLeft));
+                const paidQty = item.quantity - freeQty;
+                quotaLeft -= freeQty;
+                breakdown.push({ item, freeQty, paidQty });
+            } else {
+                breakdown.push({ item, freeQty: 0, paidQty: item.quantity });
+            }
+        }
+        return breakdown;
+    };
+
+    const quotaBreakdown = computeQuotaBreakdown();
+
+    // Items where companyPaid is true and at least 1 unit is company-covered
+    const totalFreeQty = quotaBreakdown.reduce((s, b) => s + b.freeQty, 0);
+    const companySavings = quotaBreakdown.reduce(
+        (s, b) => s + b.freeQty * b.item.price, 0
+    );
+
+    // Amount the user actually has to pay
+    const payableAmount = quotaBreakdown.reduce(
+        (s, b) => s + b.paidQty * b.item.price, 0
+    );
+
+    // Full subtotal (for display / strikethrough reference)
     const subtotal = displayItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-    const grandTotal = subtotal;
+    const grandTotal = payableAmount;
 
     const buildOrderData = (method: 'WALLET' | 'UPI' | 'CARD' | 'CASH'): PlaceOrderRequest => {
         const orderItems = items.map(item => ({
@@ -79,7 +125,7 @@ const CartScreen: React.FC = () => {
         }));
 
         const data: PlaceOrderRequest = {
-            totalAmount: getTotal(),
+            totalAmount: payableAmount, // Only charge for non-free items
             paymentMethod: method,
             deliverySlot: 'SLOT_12_13',
             outletId: 1,
@@ -156,7 +202,7 @@ const CartScreen: React.FC = () => {
                 return;
             }
 
-            const result = await createOrderPayment(getTotal());
+            const result = await createOrderPayment(payableAmount); // Only charge payable amount
             if (!result.success || !result.orderId) {
                 Alert.alert('Error', result.error || 'Failed to create payment order.');
                 return;
@@ -220,7 +266,7 @@ const CartScreen: React.FC = () => {
     };
 
     const generateOrderId = () => `ORD-${Date.now()}`;
-    const getTotal = () => grandTotal;
+    const getTotal = () => grandTotal; // Now returns payableAmount (quota-adjusted)
 
     const handleOrderDone = () => {
         setShowOrderModal(false);
@@ -256,16 +302,39 @@ const CartScreen: React.FC = () => {
                 ) : (
                     <React.Fragment>
                         <View style={styles.itemsContainer}>
-                            {displayItems.map((item) => (
+                            {quotaBreakdown.map(({ item, freeQty, paidQty }) => (
                                 <View key={item.id} style={styles.itemCard}>
                                     <View style={styles.itemInfo}>
                                         <Text style={styles.itemName}>{item.name}</Text>
                                         <Text style={styles.itemVariant}>
-                                            {item.variant || 'Regular, Extra Chutney'}
+                                            {item.variant || 'Regular'}
                                         </Text>
-                                        <Text style={styles.itemPrice}>
-                                            {formatCurrency(item.price)}
-                                        </Text>
+
+                                        {/* Price display: show strikethrough for free units, regular for paid */}
+                                        {item.companyPaid && freeQty > 0 ? (
+                                            <View style={styles.priceRow}>
+                                                {/* Slashed price zone: shows how many are free */}
+                                                <View style={styles.priceGroup}>
+                                                    {freeQty > 0 && (
+                                                        <View style={styles.freePriceChip}>
+                                                            <Text style={styles.strikethroughPrice}>
+                                                                {freeQty > 1 ? `${freeQty}×` : ''}{formatCurrency(item.price)}
+                                                            </Text>
+                                                            <Text style={styles.companyPaidBadge}>🏢 FREE</Text>
+                                                        </View>
+                                                    )}
+                                                    {paidQty > 0 && (
+                                                        <Text style={styles.itemPrice}>
+                                                            {paidQty > 1 ? `${paidQty}×` : ''}{formatCurrency(item.price)}
+                                                        </Text>
+                                                    )}
+                                                </View>
+                                            </View>
+                                        ) : (
+                                            <Text style={styles.itemPrice}>
+                                                {formatCurrency(item.price)}
+                                            </Text>
+                                        )}
                                     </View>
 
                                     <View style={styles.quantityContainer}>
@@ -286,6 +355,25 @@ const CartScreen: React.FC = () => {
                                             style={styles.quantityButton}
                                             onPress={() => {
                                                 if (items.find(i => i.id === item.id)) {
+                                                    // Quota warning for company-paid items
+                                                    if (item.companyPaid) {
+                                                        const companyPaidCount = items.reduce((sum, ci) => ci.companyPaid ? sum + ci.quantity : sum, 0);
+                                                        // Only warn when first crossing the threshold
+                                                        if (companyPaidCount + 1 > remainingQuota && companyPaidCount < remainingQuota + 1) {
+                                                            Alert.alert(
+                                                                'Free Quota Exceeded',
+                                                                `You have used all ${remainingQuota > 0 ? remainingQuota : 5} free beverages for today. This item (₹${item.price}) will be charged.`,
+                                                                [
+                                                                    { text: 'Cancel', style: 'cancel' },
+                                                                    {
+                                                                        text: 'Add Anyway',
+                                                                        onPress: () => updateQuantity(item.id, item.quantity + 1),
+                                                                    },
+                                                                ]
+                                                            );
+                                                            return;
+                                                        }
+                                                    }
                                                     updateQuantity(item.id, item.quantity + 1);
                                                 } else {
                                                     Alert.alert("Mock Item", "Cannot update quantity of mock item.");
@@ -309,9 +397,14 @@ const CartScreen: React.FC = () => {
                                 <Text style={styles.billValue}>{formatCurrency(subtotal)}</Text>
                             </View>
 
+                            {companySavings > 0 && (
+                                <View style={styles.billRow}>
+                                    <Text style={[styles.billLabel, styles.savingsLabel]}>🏢 Company Paid ({totalFreeQty} item{totalFreeQty !== 1 ? 's' : ''})</Text>
+                                    <Text style={styles.savingsValue}>-{formatCurrency(companySavings)}</Text>
+                                </View>
+                            )}
 
-
-                            <View style={styles.billRow}>
+                            <View style={[styles.billRow, { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 12, marginTop: 4 }]}>
                                 <Text style={styles.grandTotalLabel}>Grand Total</Text>
                                 <Text style={styles.grandTotalValue}>{formatCurrency(grandTotal)}</Text>
                             </View>
@@ -528,6 +621,40 @@ const createStyles = (theme: any) => StyleSheet.create({
         fontWeight: '700',
         color: theme.primary,
         marginTop: 4,
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    priceRow: {
+        marginTop: 4,
+    },
+    priceGroup: {
+        gap: 4,
+    },
+    freePriceChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    strikethroughPrice: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: 'rgba(249, 244, 224, 0.4)',
+        textDecorationLine: 'line-through',
+        fontFamily: 'PlusJakartaSans_600SemiBold',
+    },
+    companyPaidBadge: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#4CAF50',
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    savingsLabel: {
+        color: '#4CAF50',
+        fontFamily: 'PlusJakartaSans_500Medium',
+    },
+    savingsValue: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#4CAF50',
         fontFamily: 'PlusJakartaSans_700Bold',
     },
     quantityContainer: {

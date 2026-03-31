@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import MenuLayout from '../components/MenuLayout';
-import { MenuCategory } from '../data/menuData';
+import MenuLayout, { MenuCategory } from '../components/MenuLayout';
 
 const MainMealScreen: React.FC = ({ route }: any) => {
     const [categoryData, setCategoryData] = useState<MenuCategory[]>([]);
@@ -11,7 +10,24 @@ const MainMealScreen: React.FC = ({ route }: any) => {
         console.log('[MainMealScreen] Received categoryData:', data ? 'YES' : 'NO');
 
         if (data) {
-            setCategoryData([data]);
+            // Transform data to match MenuLayout expectations
+            const name = data.name || data.title || 'Category';
+            const transformedData = {
+                id: data.id || '1',
+                title: name,
+                items: (data.items || []).map((item: any) => ({
+                    id: item.id,
+                    name: item.name,
+                    description: item.description || '',
+                    price: item.price,
+                    isVeg: item.isVeg !== undefined ? item.isVeg : true,
+                    companyPaid: item.companyPaid || false,
+                    availableQuantity: item.availableQuantity,
+                    isAvailable: item.isAvailable !== undefined ? item.isAvailable : true,
+                })),
+                isOpen: true,
+            };
+            setCategoryData([transformedData]);
         } else {
             setCategoryData([]);
         }

@@ -30,6 +30,8 @@ const CategoryDetailScreen: React.FC<CategoryDetailScreenProps> = ({ route, navi
                     price: item.price,
                     isVeg: item.isVeg !== undefined ? item.isVeg : true,
                     companyPaid: item.companyPaid || false,
+                    availableQuantity: item.availableQuantity,
+                    isAvailable: item.isAvailable !== undefined ? item.isAvailable : true,
                 })),
                 isOpen: true, // MenuLayout expects this for accordion behavior
             };

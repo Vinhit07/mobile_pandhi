@@ -148,7 +148,7 @@ const OrdersScreen: React.FC = () => {
                             <View style={styles.divider} />
 
                             <View style={styles.modalTotalRow}>
-                                <Text style={styles.modalTotalLabel}>Total Amount</Text>
+                                <Text style={styles.modalTotalLabel}>Amount Paid</Text>
                                 <Text style={styles.modalTotalValue}>{formatCurrency(selectedOrder.totalAmount)}</Text>
                             </View>
                         </ScrollView>

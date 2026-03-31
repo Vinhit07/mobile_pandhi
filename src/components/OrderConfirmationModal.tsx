@@ -79,8 +79,23 @@ const OrderConfirmationModal: React.FC<OrderConfirmationModalProps> = ({
                         ))}
                     </ScrollView>
 
+                    {/* Show savings line if total paid is less than sum of items */}
+                    {(() => {
+                        const itemsTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+                        const savings = itemsTotal - total;
+                        if (savings > 0) {
+                            return (
+                                <View style={styles.savingsRow}>
+                                    <Text style={styles.savingsLabel}>🏢 Company Paid</Text>
+                                    <Text style={styles.savingsValue}>-{formatCurrency(savings)}</Text>
+                                </View>
+                            );
+                        }
+                        return null;
+                    })()}
+
                     <View style={styles.totalRow}>
-                        <Text style={styles.totalLabel}>Total Paid</Text>
+                        <Text style={styles.totalLabel}>Amount Paid</Text>
                         <Text style={styles.totalValue}>{formatCurrency(total)}</Text>
                     </View>
 
@@ -181,6 +196,24 @@ const createStyles = (theme: any) => StyleSheet.create({
     itemPrice: {
         fontSize: Typography.sizes.md,
         color: theme.textSecondary,
+    },
+    savingsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        width: '100%',
+        paddingVertical: 8,
+        marginBottom: 4,
+    },
+    savingsLabel: {
+        fontSize: Typography.sizes.sm,
+        color: '#4CAF50',
+        fontWeight: '600',
+    },
+    savingsValue: {
+        fontSize: Typography.sizes.sm,
+        fontWeight: '700',
+        color: '#4CAF50',
     },
     totalRow: {
         flexDirection: 'row',

@@ -11,6 +11,7 @@ import {
     Platform,
     UIManager,
     Switch,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -33,6 +34,8 @@ export interface MenuItem {
     price: number;
     isVeg: boolean;
     companyPaid?: boolean;
+    availableQuantity?: number;
+    isAvailable?: boolean;
 }
 
 export interface MenuCategory {
@@ -60,7 +63,7 @@ const MenuLayout: React.FC<MenuLayoutProps> = ({
     const [categories, setCategories] = useState<MenuCategory[]>(data);
     const [isVegOnly, setIsVegOnly] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const { addItem } = useCart();
+    const { addItem, items: cartItems, remainingQuota } = useCart();
 
     // Update categories when data prop changes
     React.useEffect(() => {
@@ -75,6 +78,53 @@ const MenuLayout: React.FC<MenuLayoutProps> = ({
                 cat.id === id ? { ...cat, isOpen: !cat.isOpen } : cat
             )
         );
+    };
+
+    // Count company-paid items currently in cart
+    const getCartCompanyPaidCount = () => {
+        return cartItems.reduce((sum, item) => {
+            if (item.companyPaid) return sum + item.quantity;
+            return sum;
+        }, 0);
+    };
+
+    // Handle add with quota warning
+    const handleAddItem = (item: MenuItem, categoryTitle: string) => {
+        // Block out-of-stock
+        if (item.isAvailable === false || (item.availableQuantity !== undefined && item.availableQuantity <= 0)) {
+            return; // Button should already be disabled
+        }
+
+        if (item.companyPaid) {
+            const companyPaidCount = getCartCompanyPaidCount();
+            // Show warning only when crossing the threshold for the first time
+            if (companyPaidCount + 1 > remainingQuota && companyPaidCount < remainingQuota + 1) {
+                Alert.alert(
+                    'Free Quota Exceeded',
+                    `You have used all ${remainingQuota > 0 ? remainingQuota : 5} free beverages for today. This item (₹${item.price}) and any further company-paid items will be charged.`,
+                    [
+                        { text: 'Cancel', style: 'cancel' },
+                        {
+                            text: 'Add Anyway',
+                            onPress: () => {
+                                addItem({
+                                    ...item,
+                                    image: 'https://via.placeholder.com/150',
+                                    category: categoryTitle
+                                } as any);
+                            },
+                        },
+                    ]
+                );
+                return;
+            }
+        }
+
+        addItem({
+            ...item,
+            image: 'https://via.placeholder.com/150',
+            category: categoryTitle
+        } as any);
     };
 
     // Filter categories and items based on search query AND veg toggle
@@ -166,53 +216,85 @@ const MenuLayout: React.FC<MenuLayoutProps> = ({
                         {category.isOpen && (
                             <View style={styles.categoryContent}>
                                 {category.items
-                                    .map((item, index) => (
-                                        <View
-                                            key={item.id}
-                                            style={[
-                                                styles.itemContainer,
-                                                index < category.items.length - 1 && styles.itemSeparator,
-                                            ]}
-                                        >
-                                            {/* Veg/Non-Veg Icon */}
-                                            <View style={styles.vegIconContainer}>
-                                                <View style={[
-                                                    styles.vegIconOuter,
-                                                    !item.isVeg && styles.nonVegIconOuter
-                                                ]}>
-                                                    <View style={[
-                                                        styles.vegIconInner,
-                                                        !item.isVeg && styles.nonVegIconInner
-                                                    ]} />
-                                                </View>
-                                            </View>
+                                    .map((item, index) => {
+                                        const outOfStock = item.isAvailable === false || (item.availableQuantity !== undefined && item.availableQuantity <= 0);
 
-                                            <View style={styles.itemDetails}>
-                                                <View style={styles.itemHeader}>
-                                                    <View style={styles.titleContainer}>
-                                                        <Text style={styles.itemName}>{item.name}</Text>
-                                                        {item.companyPaid && (
-                                                            <View style={styles.companyPaidBadge}>
-                                                                <Text style={styles.companyPaidText}>Company Paid</Text>
-                                                            </View>
-                                                        )}
+                                        return (
+                                            <View
+                                                key={item.id}
+                                                style={[
+                                                    styles.itemContainer,
+                                                    index < category.items.length - 1 && styles.itemSeparator,
+                                                    outOfStock && styles.itemOutOfStock,
+                                                ]}
+                                            >
+                                                {/* Veg/Non-Veg Icon */}
+                                                <View style={styles.vegIconContainer}>
+                                                    <View style={[
+                                                        styles.vegIconOuter,
+                                                        !item.isVeg && styles.nonVegIconOuter
+                                                    ]}>
+                                                        <View style={[
+                                                            styles.vegIconInner,
+                                                            !item.isVeg && styles.nonVegIconInner
+                                                        ]} />
                                                     </View>
-                                                    <Text style={styles.itemPrice}>₹{item.price}</Text>
                                                 </View>
-                                                <Text style={styles.itemDescription}>{item.description}</Text>
-                                                <TouchableOpacity
-                                                    style={styles.addButton}
-                                                    onPress={() => addItem({
-                                                        ...item,
-                                                        image: 'https://via.placeholder.com/150',
-                                                        category: category.title
-                                                    } as any)}
-                                                >
-                                                    <Text style={styles.addButtonText}>ADD</Text>
-                                                </TouchableOpacity>
+
+                                                <View style={styles.itemDetails}>
+                                                    <View style={styles.itemHeader}>
+                                                        <View style={styles.titleContainer}>
+                                                            <Text style={[
+                                                                styles.itemName,
+                                                                outOfStock && styles.textGreyed
+                                                            ]}>{item.name}</Text>
+                                                            {item.companyPaid && (
+                                                                <View style={styles.companyPaidBadge}>
+                                                                    <Text style={styles.companyPaidText}>Company Paid</Text>
+                                                                </View>
+                                                            )}
+                                                        </View>
+                                                        <View style={styles.priceStockContainer}>
+                                                            <Text style={[
+                                                                styles.itemPrice,
+                                                                outOfStock && styles.textGreyed
+                                                            ]}>₹{item.price}</Text>
+                                                            {/* Stock indicator */}
+                                                            {outOfStock ? (
+                                                                <Text style={styles.outOfStockBadge}>Out of Stock</Text>
+                                                            ) : (
+                                                                item.availableQuantity !== undefined && (
+                                                                    <Text style={[
+                                                                        styles.stockBadge, 
+                                                                        item.availableQuantity <= 5 && styles.lowStockText
+                                                                    ]}>
+                                                                        {item.availableQuantity} left
+                                                                    </Text>
+                                                                )
+                                                            )}
+                                                        </View>
+                                                    </View>
+                                                    <Text style={[
+                                                        styles.itemDescription,
+                                                        outOfStock && styles.textGreyed,
+                                                    ]}>{item.description}</Text>
+                                                    <TouchableOpacity
+                                                        style={[
+                                                            styles.addButton,
+                                                            outOfStock && styles.addButtonDisabled,
+                                                        ]}
+                                                        onPress={() => handleAddItem(item, category.title)}
+                                                        disabled={outOfStock}
+                                                    >
+                                                        <Text style={[
+                                                            styles.addButtonText,
+                                                            outOfStock && styles.addButtonTextDisabled,
+                                                        ]}>{outOfStock ? 'UNAVAILABLE' : 'ADD'}</Text>
+                                                    </TouchableOpacity>
+                                                </View>
                                             </View>
-                                        </View>
-                                    ))}
+                                        );
+                                    })}
                             </View>
                         )}
                     </View>
@@ -333,6 +415,9 @@ const createStyles = (theme: any, categoryTitleColor?: string) =>
             gap: 16,
         },
         itemSeparator: {},
+        itemOutOfStock: {
+            opacity: 0.5,
+        },
         vegIconContainer: {
             marginTop: 4,
         },
@@ -379,6 +464,29 @@ const createStyles = (theme: any, categoryTitleColor?: string) =>
             color: theme.primary,
             fontFamily: 'PlusJakartaSans_700Bold',
         },
+        priceStockContainer: {
+            alignItems: 'flex-end',
+            gap: 4,
+        },
+        outOfStockBadge: {
+            fontSize: 10,
+            fontWeight: '700',
+            color: '#EF4444',
+            fontFamily: 'PlusJakartaSans_700Bold',
+            textTransform: 'uppercase',
+        },
+        stockBadge: {
+            fontSize: 10,
+            fontWeight: '700',
+            color: theme.primary,
+            fontFamily: 'PlusJakartaSans_700Bold',
+        },
+        lowStockText: {
+            color: '#F59E0B',
+        },
+        textGreyed: {
+            color: theme.textMuted,
+        },
         itemDescription: {
             fontSize: 12,
             color: theme.textMuted,
@@ -399,12 +507,22 @@ const createStyles = (theme: any, categoryTitleColor?: string) =>
             shadowRadius: 2,
             elevation: 2,
         },
+        addButtonDisabled: {
+            backgroundColor: theme.cardBackground,
+            borderWidth: 1,
+            borderColor: theme.border,
+            shadowOpacity: 0,
+            elevation: 0,
+        },
         addButtonText: {
             fontSize: 11,
             fontWeight: '700',
             color: theme.background,
             fontFamily: 'PlusJakartaSans_700Bold',
             letterSpacing: 0.5,
+        },
+        addButtonTextDisabled: {
+            color: theme.textMuted,
         },
         nonVegIconOuter: {
             borderColor: '#EF4444',
