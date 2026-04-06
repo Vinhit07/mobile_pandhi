@@ -1,4 +1,16 @@
 export { default as HomeScreen } from './HomeScreen';
+export { default as BadgeVerificationScreen } from './BadgeVerificationScreen';
+export { default as OTPVerificationScreen } from './OTPVerificationScreen';
+export { default as ProfileSetupScreen } from './ProfileSetupScreen';
 export { default as CartScreen } from './CartScreen';
 export { default as WalletScreen } from './WalletScreen';
 export { default as ProfileScreen } from './ProfileScreen';
+export { default as PopupDetailScreen } from './PopupDetailScreen';
+export { default as SignInScreen } from './SignInScreen';
+export { default as CategoryDetailScreen } from './CategoryDetailScreen';
+export { default as PaymentScreen } from './PaymentScreen';
+export { default as OrderSuccessScreen } from './OrderSuccessScreen';
+export { default as OrdersScreen } from './OrdersScreen';
+export { default as TicketListScreen } from './TicketListScreen';
+export { default as CreateTicketScreen } from './CreateTicketScreen';
+export { default as TicketDetailScreen } from './TicketDetailScreen';

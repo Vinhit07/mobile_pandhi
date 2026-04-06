@@ -1,85 +1,121 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
-import Typography from '../constants/Typography';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Platform } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useTheme } from '../context';
 
 interface HeaderProps {
     userName: string;
     greeting: string;
+    onTicketPress?: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ userName, greeting }) => {
+const Header: React.FC<HeaderProps> = ({ userName, greeting, onTicketPress }) => {
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
+
+    // Placeholder image from HTML reference
+    const profileImage = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDh3Mdf50S6DebXzffQkZI8vfANZDmZIyRk5rvsdKGAfA1IFzRdVXUFiHp4Mab3xIBY-7eTkKAZtIIbZhfBwnnlUKmNY1SYB1wFAGvao4yWc3suQ7ZRnpurRZMKdpcUDm4ft8PPnx-kht6GiJ4jdDM15rZkfYtMJCQt_iWZJndbRrHROoAYVxxkJ2hZH9hps9WmuTFbfC39nDSEYia46QcWTAHl5Ot1Br_2BMsFDTsGkFSluZVU2K8T07jiEH-pDVwlXXrTemrYxRE';
+
     return (
         <View style={styles.container}>
             <View style={styles.leftSection}>
-                <Image
-                    source={{ uri: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=50&h=50&fit=crop' }}
-                    style={styles.avatar}
-                />
-                <View style={styles.greetingContainer}>
-                    <Text style={styles.greetingText}>{greeting}</Text>
-                    <View style={styles.nameRow}>
-                        <Text style={styles.userName}>{userName}!</Text>
-                        <Text style={styles.emoji}>👋</Text>
-                    </View>
+                <View style={styles.avatarContainer}>
+                    <Image
+                        source={{ uri: profileImage }}
+                        style={styles.avatar}
+                    />
+                </View>
+                <View>
+                    <Text style={styles.greeting}>{greeting}</Text>
+                    <Text style={styles.userName}>Hi, {userName}! 👋</Text>
                 </View>
             </View>
-            <TouchableOpacity style={styles.settingsButton}>
-                <Ionicons name="settings-outline" size={24} color={Colors.primary} />
+            <TouchableOpacity
+                style={styles.notificationButton}
+                onPress={onTicketPress}
+            >
+                <MaterialIcons name="confirmation-number" size={24} color={theme.primary} />
             </TouchableOpacity>
-        </View>
+        </View >
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingHorizontal: 24,
+        paddingTop: 32,
+        paddingBottom: 24,
     },
     leftSection: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 12,
+    },
+    avatarContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        borderWidth: 2,
+        borderColor: theme.primary,
+        overflow: 'hidden',
+        backgroundColor: theme.background,
+        // shadow-sm equivalent
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 2,
     },
     avatar: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        marginRight: 12,
-        backgroundColor: Colors.cardBackground,
+        width: '100%',
+        height: '100%',
     },
-    greetingContainer: {
-        justifyContent: 'center',
-    },
-    greetingText: {
-        fontSize: Typography.sizes.xs,
-        color: Colors.textSecondary,
-        textTransform: 'uppercase',
-        letterSpacing: 1,
-    },
-    nameRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    greeting: {
+        fontSize: 12,
+        fontWeight: '500', // font-medium
+        color: theme.textMuted,
+        fontFamily: 'PlusJakartaSans_500Medium',
+        marginBottom: 2,
     },
     userName: {
-        fontSize: Typography.sizes.xl,
-        fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
+        fontSize: 20,
+        fontWeight: '700',
+        color: theme.textPrimary,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        lineHeight: 28,
     },
-    emoji: {
-        fontSize: 18,
-        marginLeft: 4,
-    },
-    settingsButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        backgroundColor: Colors.cardBackground,
+    notificationButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 12, // rounded-xl
+        backgroundColor: theme.cardBackground,
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: theme.border,
+        // shadow-sm
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    notificationIcon: {
+        fontSize: 20,
+    },
+    notificationBadge: {
+        position: 'absolute',
+        top: 8, // top-2
+        right: 10, // right-2.5
+        width: 8, // size-2
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: theme.primary,
+        borderWidth: 1,
+        borderColor: theme.cardBackground,
     },
 });
 

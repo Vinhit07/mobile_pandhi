@@ -1,337 +1,871 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
     StyleSheet,
-    ScrollView,
-    TextInput,
     TouchableOpacity,
+    ScrollView,
     StatusBar,
+    Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import Colors from '../constants/Colors';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Typography from '../constants/Typography';
 import { CartItemCard, OrderConfirmationModal } from '../components';
-import { useCart, CartItem } from '../context';
+import { useCart, useTheme, useAuth, CartItem } from '../context';
 import { formatCurrency } from '../utils/currency';
-
-// Generate random order ID
-const generateOrderId = (): string => {
-    const letters = 'FD';
-    const numbers = Math.floor(1000 + Math.random() * 9000);
-    return `${letters}-${numbers}`;
-};
+import { placeOrder, PlaceOrderRequest } from '../services/orderService';
+import { getCurrentQuota } from '../services/productService';
+import { isAuthenticated } from '../services/api';
+import { getRazorpayKey, createOrderPayment, verifyOrderPayment } from '../services/paymentService';
+import RazorpayCheckout from '../components/RazorpayCheckout';
 
 const CartScreen: React.FC = () => {
     const navigation = useNavigation();
+    const { theme } = useTheme();
+    const { user } = useAuth();
     const {
         items,
         updateQuantity,
-        getSubtotal,
-        getDeliveryFee,
-        getTotal,
-        orderNotes,
-        setOrderNotes,
         clearCart,
+        remainingQuota,
+        refreshQuota,
     } = useCart();
 
-    // Modal state
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [orderId, setOrderId] = useState('');
     const [orderedItems, setOrderedItems] = useState<CartItem[]>([]);
     const [orderTotal, setOrderTotal] = useState(0);
+    const [orderToken, setOrderToken] = useState<number | null>(null);
+    const [orderTokenQty, setOrderTokenQty] = useState(0);
+    const [paymentMethod, setPaymentMethod] = useState<'WALLET' | 'ONLINE'>('WALLET');
+    const [isPlacing, setIsPlacing] = useState(false);
+    const [isPreOrder, setIsPreOrder] = useState(false);
+    // Refresh quota every time cart comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            if (refreshQuota) {
+                refreshQuota();
+            }
+        }, [refreshQuota])
+    );
 
-    const handlePlaceOrder = () => {
-        // Save order details before clearing cart
-        setOrderId(generateOrderId());
-        setOrderedItems([...items]);
-        setOrderTotal(getTotal());
-
-        // Show modal
-        setShowOrderModal(true);
+    // Helper to get tomorrow's date
+    const getTomorrowDate = () => {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        return tomorrow;
     };
+
+    const formatDateLabel = (date: Date) => {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${date.getDate()} ${months[date.getMonth()]}`;
+    };
+
+    const getTomorrowISO = () => {
+        const d = getTomorrowDate();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    // Razorpay state
+    const [showCheckout, setShowCheckout] = useState(false);
+    const [checkoutData, setCheckoutData] = useState<{ orderId: string; amount: number; keyId: string } | null>(null);
+
+    // remainingQuota is now managed by CartContext and fetched on mount there
+
+    // Use real cart items only - no mock data
+    const displayItems = items;
+
+    // ===QUOTA-AWARE PRICING===
+    // Compute how many company-paid units fall within the free quota (FIFO per item)
+    const computeQuotaBreakdown = () => {
+        let quotaLeft = remainingQuota;
+        const breakdown: Array<{ item: typeof items[0]; freeQty: number; paidQty: number }> = [];
+
+        for (const item of items) {
+            if (item.companyPaid) {
+                const freeQty = Math.min(item.quantity, Math.max(0, quotaLeft));
+                const paidQty = item.quantity - freeQty;
+                quotaLeft -= freeQty;
+                breakdown.push({ item, freeQty, paidQty });
+            } else {
+                breakdown.push({ item, freeQty: 0, paidQty: item.quantity });
+            }
+        }
+        return breakdown;
+    };
+
+    const quotaBreakdown = computeQuotaBreakdown();
+
+    // Items where companyPaid is true and at least 1 unit is company-covered
+    const totalFreeQty = quotaBreakdown.reduce((s, b) => s + b.freeQty, 0);
+    const companySavings = quotaBreakdown.reduce(
+        (s, b) => s + b.freeQty * b.item.price, 0
+    );
+
+    // Amount the user actually has to pay
+    const payableAmount = quotaBreakdown.reduce(
+        (s, b) => s + b.paidQty * b.item.price, 0
+    );
+
+    // Full subtotal (for display / strikethrough reference)
+    const subtotal = displayItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+    const grandTotal = payableAmount;
+
+    const buildOrderData = (method: 'WALLET' | 'UPI' | 'CARD' | 'CASH'): PlaceOrderRequest => {
+        const orderItems = items.map(item => ({
+            productId: parseInt(item.id, 10),
+            quantity: item.quantity,
+            unitPrice: item.price,
+        }));
+
+        const data: PlaceOrderRequest = {
+            totalAmount: payableAmount, // Only charge for non-free items
+            paymentMethod: method,
+            deliverySlot: 'SLOT_12_13',
+            outletId: 1,
+            items: orderItems,
+        };
+
+        if (isPreOrder) {
+            data.requestedDeliveryDate = getTomorrowISO();
+        }
+
+        return data;
+    };
+
+    const handlePlaceOrder = async () => {
+        const authenticated = await isAuthenticated();
+
+        if (!authenticated) {
+            // Fallback: Local order (mock mode)
+            setOrderId(generateOrderId());
+            setOrderedItems([...items]);
+            setOrderTotal(getTotal());
+
+            // Clear cart even in fallback mode
+            clearCart();
+
+            setShowOrderModal(true);
+            return;
+        }
+
+        if (paymentMethod === 'ONLINE') {
+            // Razorpay online payment flow
+            await initiateOnlinePayment();
+        } else {
+            // Wallet payment flow
+            await placeWalletOrder();
+        }
+    };
+
+    const placeWalletOrder = async () => {
+        setIsPlacing(true);
+        try {
+            const orderData = buildOrderData('WALLET');
+            const result = await placeOrder(orderData);
+
+            if (result.success && result.order) {
+                setOrderId(result.order.orderNumber || generateOrderId());
+                setOrderedItems([...items]);
+                setOrderTotal(result.order.totalAmount);
+
+                // Set token info from backend response
+                setOrderToken(result.order.token ?? null);
+                setOrderTokenQty(result.order.tokenQty || 1);
+
+                // Clear cart after successful order
+                clearCart();
+
+                setShowOrderModal(true);
+            } else {
+                Alert.alert('Order Failed', result.error || 'Failed to place order.');
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Something went wrong. Please try again.');
+        } finally {
+            setIsPlacing(false);
+        }
+    };
+
+    const initiateOnlinePayment = async () => {
+        setIsPlacing(true);
+        try {
+            const keyId = await getRazorpayKey();
+            if (!keyId) {
+                Alert.alert('Error', 'Payment gateway not configured.');
+                return;
+            }
+
+            const result = await createOrderPayment(payableAmount); // Only charge payable amount
+            if (!result.success || !result.orderId) {
+                Alert.alert('Error', result.error || 'Failed to create payment order.');
+                return;
+            }
+
+            setCheckoutData({
+                orderId: result.orderId,
+                amount: result.amount!,
+                keyId,
+            });
+            setShowCheckout(true);
+        } catch (error) {
+            Alert.alert('Error', 'Something went wrong.');
+        } finally {
+            setIsPlacing(false);
+        }
+    };
+
+    const handlePaymentSuccess = async (data: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+        setShowCheckout(false);
+        setIsPlacing(true);
+
+        try {
+            // Verify payment
+            const verifyResult = await verifyOrderPayment(
+                data.razorpay_order_id,
+                data.razorpay_payment_id,
+                data.razorpay_signature
+            );
+
+            if (!verifyResult.success) {
+                Alert.alert('Payment Failed', verifyResult.error || 'Payment verification failed.');
+                return;
+            }
+
+            // Payment verified, now place the order
+            const orderData = buildOrderData('UPI');
+            const result = await placeOrder(orderData);
+
+            if (result.success && result.order) {
+                setOrderId(result.order.orderNumber || generateOrderId());
+                setOrderedItems([...items]);
+                setOrderTotal(result.order.totalAmount);
+
+                // Set token info from backend response
+                setOrderToken(result.order.token ?? null);
+                setOrderTokenQty(result.order.tokenQty || 1);
+
+                // Clear cart after successful order
+                clearCart();
+
+                setShowOrderModal(true);
+            } else {
+                Alert.alert('Order Failed', result.error || 'Payment succeeded but order creation failed. Contact support.');
+            }
+        } catch (error) {
+            Alert.alert('Error', 'Something went wrong after payment. Contact support.');
+        } finally {
+            setIsPlacing(false);
+        }
+    };
+
+    const generateOrderId = () => `ORD-${Date.now()}`;
+    const getTotal = () => grandTotal; // Now returns payableAmount (quota-adjusted)
 
     const handleOrderDone = () => {
         setShowOrderModal(false);
-        clearCart();
-        // Navigate to home
         navigation.navigate('Home' as never);
     };
 
-    // Empty cart state
-    if (items.length === 0) {
-        return (
-            <SafeAreaView style={styles.container} edges={['top']}>
-                <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
-                <View style={styles.header}>
-                    <TouchableOpacity
-                        style={styles.backButton}
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
-                    </TouchableOpacity>
-                    <Text style={styles.headerTitle}>My Cart</Text>
-                    <View style={styles.placeholder} />
-                </View>
-                <View style={styles.emptyContainer}>
-                    <View style={styles.emptyIconContainer}>
-                        <Ionicons name="cart-outline" size={64} color={Colors.primary} />
-                    </View>
-                    <Text style={styles.emptyTitle}>Your Cart is Empty</Text>
-                    <Text style={styles.emptySubtitle}>
-                        Browse the menu and add your favorite items to get started!
-                    </Text>
-                </View>
-            </SafeAreaView>
-        );
-    }
+    const styles = createStyles(theme);
 
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
-            <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+            <StatusBar barStyle="light-content" backgroundColor={theme.background} />
 
-            {/* Header */}
             <View style={styles.header}>
                 <TouchableOpacity
-                    style={styles.backButton}
                     onPress={() => navigation.goBack()}
+                    style={styles.backButton}
                 >
-                    <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
+                    <MaterialIcons name="arrow-back" size={24} color={theme.textPrimary} />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>My Cart</Text>
-                <View style={styles.placeholder} />
+                <View style={{ width: 40 }} />
             </View>
 
-            <ScrollView
-                style={styles.scrollView}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-            >
-                {/* Cart Items */}
-                <View style={styles.itemsSection}>
-                    {items.map((item) => (
-                        <CartItemCard
-                            key={item.id}
-                            name={item.name}
-                            variant={item.variant}
-                            price={item.price}
-                            quantity={item.quantity}
-                            image={item.image}
-                            onIncrease={() => updateQuantity(item.id, item.quantity + 1)}
-                            onDecrease={() => updateQuantity(item.id, item.quantity - 1)}
-                        />
-                    ))}
-                </View>
-
-                {/* Order Notes */}
-                <View style={styles.notesSection}>
-                    <Text style={styles.notesTitle}>ORDER NOTES</Text>
-                    <View style={styles.notesInputContainer}>
-                        <TextInput
-                            style={styles.notesInput}
-                            placeholder="Do you have any special instructions for the restaurant?"
-                            placeholderTextColor={Colors.textMuted}
-                            value={orderNotes}
-                            onChangeText={setOrderNotes}
-                            multiline
-                            numberOfLines={3}
-                        />
-                        <Ionicons
-                            name="document-text-outline"
-                            size={20}
-                            color={Colors.textMuted}
-                            style={styles.notesIcon}
-                        />
+            <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+                {displayItems.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                        <MaterialIcons name="shopping-cart" size={64} color={theme.cardBackground} />
+                        <Text style={styles.emptyText}>Your cart is empty.</Text>
+                        <TouchableOpacity onPress={() => navigation.navigate('Home' as never)}>
+                            <Text style={styles.browseText}>Browse Menu</Text>
+                        </TouchableOpacity>
                     </View>
-                </View>
+                ) : (
+                    <React.Fragment>
+                        <View style={styles.itemsContainer}>
+                            {quotaBreakdown.map(({ item, freeQty, paidQty }) => (
+                                <View key={item.id} style={styles.itemCard}>
+                                    <View style={styles.itemInfo}>
+                                        <Text style={styles.itemName}>{item.name}</Text>
+                                        <Text style={styles.itemVariant}>
+                                            {item.variant || 'Regular'}
+                                        </Text>
 
-                {/* Order Summary */}
-                <View style={styles.summarySection}>
-                    <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Subtotal</Text>
-                        <Text style={styles.summaryValue}>{formatCurrency(getSubtotal())}</Text>
-                    </View>
-                    <View style={styles.summaryRow}>
-                        <Text style={styles.summaryLabel}>Delivery Fee</Text>
-                        <Text style={styles.summaryValue}>{formatCurrency(getDeliveryFee())}</Text>
-                    </View>
-                    <View style={styles.divider} />
-                    <View style={styles.totalRow}>
-                        <Text style={styles.totalLabel}>Total</Text>
-                        <Text style={styles.totalValue}>{formatCurrency(getTotal())}</Text>
-                    </View>
+                                        {/* Price display: show strikethrough for free units, regular for paid */}
+                                        {item.companyPaid && freeQty > 0 ? (
+                                            <View style={styles.priceRow}>
+                                                {/* Slashed price zone: shows how many are free */}
+                                                <View style={styles.priceGroup}>
+                                                    {freeQty > 0 && (
+                                                        <View style={styles.freePriceChip}>
+                                                            <Text style={styles.strikethroughPrice}>
+                                                                {freeQty > 1 ? `${freeQty}×` : ''}{formatCurrency(item.price)}
+                                                            </Text>
+                                                            <Text style={styles.companyPaidBadge}>🏢 FREE</Text>
+                                                        </View>
+                                                    )}
+                                                    {paidQty > 0 && (
+                                                        <Text style={styles.itemPrice}>
+                                                            {paidQty > 1 ? `${paidQty}×` : ''}{formatCurrency(item.price)}
+                                                        </Text>
+                                                    )}
+                                                </View>
+                                            </View>
+                                        ) : (
+                                            <Text style={styles.itemPrice}>
+                                                {formatCurrency(item.price)}
+                                            </Text>
+                                        )}
+                                    </View>
 
-                    {/* Place Order Button */}
-                    <TouchableOpacity style={styles.placeOrderButton} onPress={handlePlaceOrder}>
-                        <Text style={styles.placeOrderText}>Place Order</Text>
-                        <Ionicons name="arrow-forward" size={20} color={Colors.textPrimary} />
-                    </TouchableOpacity>
-                </View>
-            </ScrollView>
+                                    <View style={styles.quantityContainer}>
+                                        <TouchableOpacity
+                                            style={styles.quantityButton}
+                                            onPress={() => {
+                                                if (items.find(i => i.id === item.id)) {
+                                                    updateQuantity(item.id, item.quantity - 1);
+                                                } else {
+                                                    Alert.alert("Mock Item", "Cannot update quantity of mock item.");
+                                                }
+                                            }}
+                                        >
+                                            <MaterialIcons name="remove" size={16} color={theme.background} />
+                                        </TouchableOpacity>
+                                        <Text style={styles.quantityText}>{item.quantity}</Text>
+                                        <TouchableOpacity
+                                            style={styles.quantityButton}
+                                            onPress={() => {
+                                                if (items.find(i => i.id === item.id)) {
+                                                    // Quota warning for company-paid items
+                                                    if (item.companyPaid) {
+                                                        const companyPaidCount = items.reduce((sum, ci) => ci.companyPaid ? sum + ci.quantity : sum, 0);
+                                                        // Only warn when first crossing the threshold
+                                                        if (companyPaidCount + 1 > remainingQuota && companyPaidCount < remainingQuota + 1) {
+                                                            Alert.alert(
+                                                                'Free Quota Exceeded',
+                                                                `You have used all ${remainingQuota > 0 ? remainingQuota : 5} free beverages for today. This item (₹${item.price}) will be charged.`,
+                                                                [
+                                                                    { text: 'Cancel', style: 'cancel' },
+                                                                    {
+                                                                        text: 'Add Anyway',
+                                                                        onPress: () => updateQuantity(item.id, item.quantity + 1),
+                                                                    },
+                                                                ]
+                                                            );
+                                                            return;
+                                                        }
+                                                    }
+                                                    updateQuantity(item.id, item.quantity + 1);
+                                                } else {
+                                                    Alert.alert("Mock Item", "Cannot update quantity of mock item.");
+                                                }
+                                            }}
+                                        >
+                                            <MaterialIcons name="add" size={16} color={theme.background} />
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
 
-            {/* Order Confirmation Modal */}
+                        <View style={{ flex: 1, minHeight: 16 }} />
+
+                        <View style={styles.billSummary}>
+                            <Text style={styles.billHeader}>BILL SUMMARY</Text>
+
+                            <View style={styles.billRow}>
+                                <Text style={styles.billLabel}>Subtotal</Text>
+                                <Text style={styles.billValue}>{formatCurrency(subtotal)}</Text>
+                            </View>
+
+                            {companySavings > 0 && (
+                                <View style={styles.billRow}>
+                                    <Text style={[styles.billLabel, styles.savingsLabel]}>🏢 Company Paid ({totalFreeQty} item{totalFreeQty !== 1 ? 's' : ''})</Text>
+                                    <Text style={styles.savingsValue}>-{formatCurrency(companySavings)}</Text>
+                                </View>
+                            )}
+
+                            <View style={[styles.billRow, { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 12, marginTop: 4 }]}>
+                                <Text style={styles.grandTotalLabel}>Grand Total</Text>
+                                <Text style={styles.grandTotalValue}>{formatCurrency(grandTotal)}</Text>
+                            </View>
+                        </View>
+
+                        {/* Order For Toggle (Today / Tomorrow) */}
+                        <Text style={styles.paymentMethodLabel}>ORDER FOR</Text>
+                        <View style={styles.paymentMethods}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.paymentOption,
+                                    !isPreOrder && styles.paymentOptionActive,
+                                ]}
+                                onPress={() => setIsPreOrder(false)}
+                            >
+                                <Ionicons
+                                    name="today"
+                                    size={20}
+                                    color={!isPreOrder ? theme.primary : theme.textMuted}
+                                />
+                                <Text style={[
+                                    styles.paymentOptionText,
+                                    !isPreOrder && styles.paymentOptionTextActive,
+                                ]}>Today</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.paymentOption,
+                                    isPreOrder && styles.paymentOptionActive,
+                                ]}
+                                onPress={() => setIsPreOrder(true)}
+                            >
+                                <Ionicons
+                                    name="calendar"
+                                    size={20}
+                                    color={isPreOrder ? theme.primary : theme.textMuted}
+                                />
+                                <View>
+                                    <Text style={[
+                                        styles.paymentOptionText,
+                                        isPreOrder && styles.paymentOptionTextActive,
+                                    ]}>Tomorrow</Text>
+                                    <Text style={[
+                                        styles.preOrderDateText,
+                                        isPreOrder && { color: theme.primary },
+                                    ]}>{formatDateLabel(getTomorrowDate())}</Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Payment Method Selector */}
+                        <Text style={styles.paymentMethodLabel}>PAYMENT METHOD</Text>
+                        <View style={styles.paymentMethods}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.paymentOption,
+                                    paymentMethod === 'WALLET' && styles.paymentOptionActive,
+                                ]}
+                                onPress={() => setPaymentMethod('WALLET')}
+                            >
+                                <Ionicons
+                                    name="wallet"
+                                    size={20}
+                                    color={paymentMethod === 'WALLET' ? theme.primary : theme.textMuted}
+                                />
+                                <Text style={[
+                                    styles.paymentOptionText,
+                                    paymentMethod === 'WALLET' && styles.paymentOptionTextActive,
+                                ]}>Wallet</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.paymentOption,
+                                    paymentMethod === 'ONLINE' && styles.paymentOptionActive,
+                                ]}
+                                onPress={() => setPaymentMethod('ONLINE')}
+                            >
+                                <Ionicons
+                                    name="card"
+                                    size={20}
+                                    color={paymentMethod === 'ONLINE' ? theme.primary : theme.textMuted}
+                                />
+                                <Text style={[
+                                    styles.paymentOptionText,
+                                    paymentMethod === 'ONLINE' && styles.paymentOptionTextActive,
+                                ]}>Pay Online</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.placeOrderButton, isPlacing && styles.buttonDisabled]}
+                            onPress={handlePlaceOrder}
+                            disabled={isPlacing}
+                        >
+                            {isPlacing ? (
+                                <ActivityIndicator color="#FFF" />
+                            ) : (
+                                <React.Fragment>
+                                    <Text style={styles.placeOrderText}>
+                                        {paymentMethod === 'ONLINE'
+                                            ? (isPreOrder ? 'Pay & Pre-Order for Tomorrow' : 'Pay & Place Order')
+                                            : (isPreOrder ? 'Pre-Order for Tomorrow' : 'Place Order')}
+                                    </Text>
+                                    <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                                </React.Fragment>
+                            )}
+                        </TouchableOpacity>
+                    </React.Fragment>
+                )}</ScrollView>
+
             <OrderConfirmationModal
                 visible={showOrderModal}
                 orderId={orderId}
                 items={orderedItems}
                 total={orderTotal}
                 onDone={handleOrderDone}
+                token={orderToken}
+                tokenQty={orderTokenQty}
             />
+
+            {/* Razorpay Checkout */}
+            {checkoutData && (
+                <RazorpayCheckout
+                    visible={showCheckout}
+                    orderId={checkoutData.orderId}
+                    amount={checkoutData.amount}
+                    keyId={checkoutData.keyId}
+                    description="Pandhi Order"
+                    prefillEmail={user?.email || ''}
+                    prefillName={user?.name || ''}
+                    onSuccess={handlePaymentSuccess}
+                    onDismiss={() => setShowCheckout(false)}
+                />
+            )}
         </SafeAreaView>
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: Colors.background,
+        backgroundColor: theme.background,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingHorizontal: 20,
+        paddingVertical: 20,
+        backgroundColor: theme.background,
+        zIndex: 10,
     },
     backButton: {
         width: 40,
         height: 40,
-        borderRadius: 12,
-        backgroundColor: Colors.cardBackground,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
     },
     headerTitle: {
-        fontSize: Typography.sizes.xl,
-        fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
-    },
-    placeholder: {
-        width: 40,
+        fontSize: 18,
+        fontWeight: '700',
+        color: theme.textPrimary,
+        letterSpacing: -0.5,
+        fontFamily: 'PlusJakartaSans_700Bold',
     },
     scrollView: {
         flex: 1,
     },
     scrollContent: {
-        paddingBottom: 100,
-    },
-    itemsSection: {
         paddingHorizontal: 20,
-        marginTop: 8,
+        paddingTop: 8,
+        paddingBottom: 40,
+        flexGrow: 1,
     },
-    notesSection: {
-        paddingHorizontal: 20,
-        marginTop: 24,
+    itemsContainer: {
+        gap: 12,
+        marginBottom: 16,
     },
-    notesTitle: {
-        fontSize: Typography.sizes.sm,
-        fontWeight: Typography.weights.semibold,
-        color: Colors.textSecondary,
-        letterSpacing: 1,
-        marginBottom: 12,
-    },
-    notesInputContainer: {
-        backgroundColor: Colors.cardBackground,
-        borderRadius: 16,
+    itemCard: {
+        backgroundColor: theme.cardBackground,
         padding: 16,
+        borderRadius: 16,
         flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 4,
     },
-    notesInput: {
+    itemInfo: {
         flex: 1,
-        fontSize: Typography.sizes.md,
-        color: Colors.textPrimary,
-        minHeight: 60,
-        textAlignVertical: 'top',
+        paddingRight: 16,
+        gap: 4,
     },
-    notesIcon: {
-        marginLeft: 8,
+    itemName: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: theme.textPrimary,
+        lineHeight: 20,
+        fontFamily: 'PlusJakartaSans_700Bold',
     },
-    summarySection: {
-        marginHorizontal: 20,
-        marginTop: 24,
-        backgroundColor: Colors.cardBackground,
+    itemVariant: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: 'rgba(249, 244, 224, 0.6)',
+        fontFamily: 'PlusJakartaSans_500Medium',
+    },
+    itemPrice: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: theme.primary,
+        marginTop: 4,
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    priceRow: {
+        marginTop: 4,
+    },
+    priceGroup: {
+        gap: 4,
+    },
+    freePriceChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    strikethroughPrice: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: 'rgba(249, 244, 224, 0.4)',
+        textDecorationLine: 'line-through',
+        fontFamily: 'PlusJakartaSans_600SemiBold',
+    },
+    companyPaidBadge: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#4CAF50',
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    savingsLabel: {
+        color: '#4CAF50',
+        fontFamily: 'PlusJakartaSans_500Medium',
+    },
+    savingsValue: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#4CAF50',
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    quantityContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(53, 28, 21, 0.3)',
         borderRadius: 20,
-        padding: 20,
+        padding: 4,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
+        height: 36,
     },
-    summaryRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
-    summaryLabel: {
-        fontSize: Typography.sizes.md,
-        color: Colors.textSecondary,
-    },
-    summaryValue: {
-        fontSize: Typography.sizes.md,
-        color: Colors.textPrimary,
-        fontWeight: Typography.weights.medium,
-    },
-    divider: {
-        height: 1,
-        backgroundColor: Colors.border,
-        marginVertical: 12,
-    },
-    totalRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    totalLabel: {
-        fontSize: Typography.sizes.lg,
-        fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
-    },
-    totalValue: {
-        fontSize: Typography.sizes.xxl,
-        fontWeight: Typography.weights.bold,
-        color: Colors.priceOrange,
-    },
-    placeOrderButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    quantityButton: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: theme.primary,
         justifyContent: 'center',
-        backgroundColor: Colors.primary,
-        borderRadius: 30,
-        paddingVertical: 16,
-        gap: 8,
+        alignItems: 'center',
     },
-    placeOrderText: {
-        fontSize: Typography.sizes.lg,
-        fontWeight: Typography.weights.semibold,
-        color: Colors.textPrimary,
+    quantityText: {
+        width: 32,
+        textAlign: 'center',
+        fontSize: 14,
+        fontWeight: '700',
+        color: theme.textPrimary,
+        fontFamily: 'PlusJakartaSans_700Bold',
     },
-    // Empty state styles
     emptyContainer: {
         flex: 1,
-        justifyContent: 'center',
         alignItems: 'center',
-        padding: 40,
-    },
-    emptyIconContainer: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        backgroundColor: Colors.cardBackground,
         justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 24,
+        paddingVertical: 40,
+        gap: 16,
     },
-    emptyTitle: {
-        fontSize: Typography.sizes.xxl,
-        fontWeight: Typography.weights.bold,
-        color: Colors.textPrimary,
+    emptyText: {
+        color: 'rgba(249, 244, 224, 0.6)',
+        fontSize: 16,
+        fontFamily: 'PlusJakartaSans_500Medium',
+    },
+    browseText: {
+        color: theme.primary,
+        fontSize: 16,
+        fontWeight: '700',
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    billSummary: {
+        backgroundColor: theme.cardBackground,
+        borderRadius: 24,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 4,
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.05)',
+    },
+    billHeader: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: 'rgba(249, 244, 224, 0.4)',
+        textTransform: 'uppercase',
+        letterSpacing: 2,
+        marginBottom: 16,
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    billRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    billRowBorder: {
+        marginBottom: 16,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+        borderStyle: 'dashed',
+    },
+    billLabel: {
+        fontSize: 14,
+        color: 'rgba(249, 244, 224, 0.7)',
+        fontFamily: 'PlusJakartaSans_400Regular',
+    },
+    billValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.textPrimary,
+        fontFamily: 'PlusJakartaSans_600SemiBold',
+    },
+    grandTotalLabel: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: theme.textPrimary,
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    grandTotalValue: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: theme.primary,
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    payButton: {
+        width: '100%',
+        backgroundColor: theme.primary,
+        paddingVertical: 16,
+        borderRadius: 30,
+        shadowColor: theme.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 24,
         marginBottom: 8,
     },
     emptySubtitle: {
         fontSize: Typography.sizes.md,
-        color: Colors.textMuted,
+        color: theme.textSecondary,
         textAlign: 'center',
-        lineHeight: 22,
+    },
+    paymentMethodLabel: {
+        fontSize: Typography.sizes.sm,
+        fontWeight: Typography.weights.semibold,
+        color: theme.textSecondary,
+        letterSpacing: 1,
+        marginTop: 16,
+        marginBottom: 12,
+    },
+    paymentMethods: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 16,
+    },
+    paymentOption: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 14,
+        borderRadius: 14,
+        backgroundColor: theme.cardBackground,
+        borderWidth: 1.5,
+        borderColor: 'transparent',
+    },
+    paymentOptionActive: {
+        borderColor: theme.primary,
+        backgroundColor: 'rgba(255, 107, 53, 0.08)',
+    },
+    paymentOptionText: {
+        fontSize: Typography.sizes.md,
+        fontWeight: Typography.weights.medium,
+        color: theme.textMuted,
+    },
+    paymentOptionTextActive: {
+        color: theme.primary,
+        fontWeight: Typography.weights.semibold,
+    },
+    preOrderDateText: {
+        fontSize: 11,
+        color: 'rgba(249, 244, 224, 0.4)',
+        marginTop: 2,
+        fontFamily: 'PlusJakartaSans_400Regular',
+    },
+    buttonDisabled: {
+        opacity: 0.6,
+    },
+    placeOrderButton: {
+        width: '100%',
+        backgroundColor: theme.primary,
+        paddingVertical: 16,
+        borderRadius: 30,
+        shadowColor: theme.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 24,
+        marginBottom: 8,
+    },
+    placeOrderText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '800',
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    payButtonText: {
+        color: theme.background,
+        fontSize: 16,
+        fontWeight: '800',
+        fontFamily: 'PlusJakartaSans_700Bold',
+    },
+    payButtonPriceContainer: {
+        backgroundColor: 'rgba(53, 28, 21, 0.1)',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    payButtonPrice: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: theme.background,
+        fontFamily: 'PlusJakartaSans_700Bold',
     },
 });
 

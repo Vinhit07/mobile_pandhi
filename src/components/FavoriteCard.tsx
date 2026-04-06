@@ -1,76 +1,99 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import Colors from '../constants/Colors';
-import Typography from '../constants/Typography';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { formatCurrency } from '../utils/currency';
+import { useTheme } from '../context';
 
 interface FavoriteCardProps {
     name: string;
     lastOrdered: string;
     price: number;
-    image: string;
+    image?: string; // Optional, not used in new design
     onOrderAgain: () => void;
 }
+
+const showMockAlert = () => {
+    Alert.alert(
+        'Coming Soon',
+        'This is mock data, just for viewing. This feature will be implemented soon!',
+        [{ text: 'OK' }]
+    );
+};
 
 const FavoriteCard: React.FC<FavoriteCardProps> = ({
     name,
     lastOrdered,
     price,
-    image,
     onOrderAgain,
 }) => {
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
+
     return (
-        <View style={styles.container}>
-            <Image source={{ uri: image }} style={styles.image} />
-            <View style={styles.content}>
+        <TouchableOpacity
+            style={styles.container}
+            onPress={showMockAlert}
+            activeOpacity={0.95}
+        >
+            <View style={styles.header}>
                 <Text style={styles.name} numberOfLines={1}>{name}</Text>
-                <Text style={styles.details}>Ordered {lastOrdered} • {formatCurrency(price)}</Text>
-                <TouchableOpacity style={styles.orderButton} onPress={onOrderAgain}>
-                    <Text style={styles.orderButtonText}>Order Again</Text>
-                </TouchableOpacity>
+                <Text style={styles.price}>{formatCurrency(price)}</Text>
             </View>
-        </View>
+            <Text style={styles.lastOrdered}>Last ordered on {lastOrdered}</Text>
+            <TouchableOpacity style={styles.reorderButton} onPress={showMockAlert} activeOpacity={0.8}>
+                <Text style={styles.reorderText}>REORDER</Text>
+            </TouchableOpacity>
+        </TouchableOpacity>
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
-        width: 160,
-        backgroundColor: Colors.cardBackground,
+        minWidth: 180,
+        backgroundColor: theme.cardBackground,
         borderRadius: 16,
-        overflow: 'hidden',
+        padding: 16,
         marginRight: 12,
+        borderWidth: 1,
+        borderColor: theme.border,
     },
-    image: {
-        width: '100%',
-        height: 100,
-        backgroundColor: Colors.categoryBackground,
-    },
-    content: {
-        padding: 12,
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 4,
+        gap: 8,
     },
     name: {
-        fontSize: Typography.sizes.md,
-        fontWeight: Typography.weights.semibold,
-        color: Colors.textPrimary,
-        marginBottom: 4,
+        fontSize: 14,
+        fontWeight: '700',
+        color: theme.textPrimary,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        flex: 1,
     },
-    details: {
-        fontSize: Typography.sizes.xs,
-        color: Colors.textSecondary,
-        marginBottom: 10,
+    price: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: theme.primary,
+        fontFamily: 'PlusJakartaSans_700Bold',
     },
-    orderButton: {
-        backgroundColor: Colors.primary,
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        alignSelf: 'flex-start',
+    lastOrdered: {
+        fontSize: 10,
+        color: theme.textMuted,
+        fontFamily: 'PlusJakartaSans_500Medium',
+        marginBottom: 12,
     },
-    orderButtonText: {
-        fontSize: Typography.sizes.xs,
-        fontWeight: Typography.weights.semibold,
-        color: Colors.textPrimary,
+    reorderButton: {
+        backgroundColor: theme.primary,
+        paddingVertical: 10,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    reorderText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: theme.brownDark,
+        fontFamily: 'PlusJakartaSans_700Bold',
+        letterSpacing: 0.5,
     },
 });
 

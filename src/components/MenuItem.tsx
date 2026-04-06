@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
 import Typography from '../constants/Typography';
 import { formatCurrency } from '../utils/currency';
+import { useTheme } from '../context';
 
 interface MenuItemProps {
     name: string;
@@ -20,6 +20,9 @@ const MenuItem: React.FC<MenuItemProps> = ({
     image,
     onAdd,
 }) => {
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
+
     return (
         <View style={styles.container}>
             <Image source={{ uri: image }} style={styles.image} />
@@ -31,13 +34,13 @@ const MenuItem: React.FC<MenuItemProps> = ({
                 <Text style={styles.description} numberOfLines={2}>{description}</Text>
             </View>
             <TouchableOpacity style={styles.addButton} onPress={onAdd}>
-                <Ionicons name="add" size={20} color={Colors.textPrimary} />
+                <Ionicons name="add" size={20} color={theme.textSecondary} />
             </TouchableOpacity>
         </View>
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -49,7 +52,7 @@ const styles = StyleSheet.create({
         width: 56,
         height: 56,
         borderRadius: 12,
-        backgroundColor: Colors.categoryBackground,
+        backgroundColor: theme.categoryBackground,
     },
     content: {
         flex: 1,
@@ -63,18 +66,18 @@ const styles = StyleSheet.create({
     name: {
         fontSize: Typography.sizes.md,
         fontWeight: Typography.weights.semibold,
-        color: Colors.textPrimary,
+        color: theme.textPrimary,
         flex: 1,
     },
     price: {
         fontSize: Typography.sizes.md,
         fontWeight: Typography.weights.semibold,
-        color: Colors.priceOrange,
+        color: theme.priceOrange,
         marginLeft: 8,
     },
     description: {
         fontSize: Typography.sizes.xs,
-        color: Colors.textSecondary,
+        color: theme.textSecondary,
         lineHeight: 16,
     },
     addButton: {
@@ -82,7 +85,7 @@ const styles = StyleSheet.create({
         height: 32,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: Colors.border,
+        borderColor: theme.border,
         justifyContent: 'center',
         alignItems: 'center',
     },

@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Colors from '../constants/Colors';
-import Typography from '../constants/Typography';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useTheme } from '../context';
 
 interface SearchBarProps {
     value: string;
@@ -13,56 +12,68 @@ interface SearchBarProps {
 const SearchBar: React.FC<SearchBarProps> = ({
     value,
     onChangeText,
-    placeholder = "What are you craving?"
+    placeholder = 'Search for your favorite meal...',
 }) => {
+    const { theme } = useTheme();
+    const styles = createStyles(theme);
+
     return (
         <View style={styles.container}>
-            <View style={styles.searchContainer}>
-                <Ionicons name="search-outline" size={20} color={Colors.textSecondary} />
+            <View style={styles.searchBox}>
+                <MaterialIcons name={"search" as any} size={24} color={theme.textMuted} style={styles.searchIcon} />
                 <TextInput
                     style={styles.input}
                     value={value}
                     onChangeText={onChangeText}
                     placeholder={placeholder}
-                    placeholderTextColor={Colors.textSecondary}
+                    placeholderTextColor={theme.textMuted}
                 />
+                {value.length > 0 && (
+                    <TouchableOpacity onPress={() => onChangeText('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                        <MaterialIcons name="close" size={18} color={theme.textMuted} />
+                    </TouchableOpacity>
+                )}
             </View>
-            <TouchableOpacity style={styles.filterButton}>
-                <Ionicons name="options-outline" size={20} color={Colors.textPrimary} />
-            </TouchableOpacity>
         </View>
     );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: any) => StyleSheet.create({
     container: {
-        flexDirection: 'row',
-        paddingHorizontal: 20,
-        marginBottom: 20,
-        gap: 12,
+        paddingHorizontal: 24,
+        marginBottom: 24,
     },
-    searchContainer: {
-        flex: 1,
+    searchBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.cardBackground,
-        borderRadius: 12,
+        backgroundColor: theme.cardBackground, // bg-dark-card
+        borderRadius: 12, // rounded-xl
         paddingHorizontal: 16,
-        height: 48,
-        gap: 10,
+        paddingVertical: 12, // py-4 approx (HTML has py-4 which is 1rem/16px)
+        borderWidth: 1,
+        borderColor: theme.border, // border-dark-border
+        // shadow-sm
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    searchIcon: {
+        marginRight: 12, // pl-12 (48px) - 16px padding = 32px? 
+        // Actually HTML: absolute left-4. 
+        // React Native: we'll use flex layout. left-4 is 16px. 
+        // We have paddingHorizontal 16. So icon is at 16px.
+        // Input needs paddingLeft to clear icon.
     },
     input: {
         flex: 1,
-        fontSize: Typography.sizes.md,
-        color: Colors.textPrimary,
-    },
-    filterButton: {
-        width: 48,
-        height: 48,
-        backgroundColor: Colors.cardBackground,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
+        fontSize: 14, // text-sm
+        fontWeight: '500', // font-medium
+        color: theme.textPrimary,
+        height: 24, // Fix height to ensure vertical alignment
+        padding: 0, // Reset padding
+        fontFamily: 'PlusJakartaSans_500Medium',
     },
 });
 
